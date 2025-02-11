@@ -2,6 +2,7 @@
   "name": "simulateur-solaire",
   "private": true,
   "version": "0.0.0",
+  "homepage": "https://abienergie.github.io/simulateur-solaire/",
   "type": "module",
   "scripts": {
     "dev": "vite",
