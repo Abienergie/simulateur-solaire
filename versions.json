@@ -1,0 +1,44 @@
+{
+  "BETA_6.8.2": {
+    "date": "2024-03-16",
+    "description": "Amélioration des solutions de stockage :",
+    "features": [
+      "Ajout des batteries physiques à l'achat",
+      "Gestion dynamique des batteries depuis les réglages",
+      "Correction du calcul de surface des panneaux",
+      "Optimisation des calculs financiers",
+      "Amélioration de la gestion des tarifs de revente",
+      "Correction de bugs mineurs",
+      "Amélioration de la stabilité",
+      "Mise à jour de la documentation"
+    ]
+  },
+  "BETA_6.8.1": {
+    "date": "2024-03-15",
+    "description": "Correction du stockage en revente totale :",
+    "features": [
+      "Désactivation des solutions de stockage en revente totale",
+      "Amélioration de la gestion des tarifs de revente",
+      "Optimisation du calcul de surface des panneaux",
+      "Correction de bugs mineurs",
+      "Amélioration de la stabilité",
+      "Mise à jour de la documentation"
+    ]
+  },
+  "BETA_6.8": {
+    "date": "2024-03-14",
+    "description": "Amélioration des solutions de stockage :",
+    "features": [
+      "Mise à jour des descriptions des solutions de stockage",
+      "Correction du calcul d'autoconsommation avec MyBattery",
+      "Ajustement des frais de mise en service MyBattery",
+      "Mise à jour des tarifs et taxes",
+      "Amélioration de l'affichage des coûts",
+      "Optimisation des calculs financiers",
+      "Correction de bugs mineurs",
+      "Amélioration de la stabilité",
+      "Mise à jour de la documentation",
+      "Optimisation des performances"
+    ]
+  }
+}
