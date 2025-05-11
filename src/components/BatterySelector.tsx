@@ -16,10 +16,10 @@ interface BatterySelectorProps {
   batteryFormula: 'abonnement' | 'comptant';
 }
 
-export default function BatterySelector({ 
-  value, 
-  onChange, 
-  subscriptionDuration, 
+export default function BatterySelector({
+  value,
+  onChange,
+  subscriptionDuration,
   installedPower,
   initialAutoconsommation = 75,
   connectionType = 'surplus',
@@ -30,6 +30,8 @@ export default function BatterySelector({
   const [showOptions, setShowOptions] = useState(false);
   const [hasElectricVehicle, setHasElectricVehicle] = useState(false);
   const [includeSmartCharger, setIncludeSmartCharger] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState(false);
 
   const defaultAutoconsommation = settings?.defaultAutoconsumption ?? initialAutoconsommation;
 
@@ -40,9 +42,9 @@ export default function BatterySelector({
   useEffect(() => {
     if (connectionType === 'total_sale') {
       setShowOptions(false);
-      onChange({ 
+      onChange({
         type: null,
-        resetAutoconsommation: defaultAutoconsommation 
+        resetAutoconsommation: defaultAutoconsommation
       });
       setIncludeSmartCharger(false);
       setHasElectricVehicle(false);
@@ -56,7 +58,7 @@ export default function BatterySelector({
       newAutoconsommation = 100;
     }
     
-    onChange({ 
+    onChange({
       type,
       includeSmartCharger: type === 'virtual' ? includeSmartCharger : false,
       resetAutoconsommation: newAutoconsommation
@@ -65,8 +67,8 @@ export default function BatterySelector({
 
   const handlePhysicalBatterySelect = (battery: PhysicalBattery) => {
     const newAutoconsommation = Math.min(100, defaultAutoconsommation + battery.autoconsumptionIncrease);
-    onChange({ 
-      type: 'physical', 
+    onChange({
+      type: 'physical',
       model: battery,
       includeSmartCharger: false,
       resetAutoconsommation: newAutoconsommation
@@ -74,8 +76,8 @@ export default function BatterySelector({
   };
 
   const handleVirtualCapacitySelect = (capacity: number) => {
-    onChange({ 
-      type: 'virtual', 
+    onChange({
+      type: 'virtual',
       virtualCapacity: capacity,
       includeSmartCharger: hasElectricVehicle ? includeSmartCharger : false,
       resetAutoconsommation: 100
@@ -117,36 +119,36 @@ export default function BatterySelector({
     );
   }
 
-  const showPhysicalBatteryOption = batteryFormula === 'comptant' 
-    ? purchaseBatteries?.length > 0 
+  const showPhysicalBatteryOption = batteryFormula === 'comptant'
+    ? purchaseBatteries?.length > 0
     : filteredPhysicalBatteries.length > 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <h3 className="text-lg font-medium text-gray-900">Solution de stockage</h3>
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="enableStorage"
-            checked={showOptions}
-            onChange={(e) => {
-              setShowOptions(e.target.checked);
-              if (!e.target.checked) {
-                onChange({ 
-                  type: null,
-                  resetAutoconsommation: defaultAutoconsommation 
-                });
-                setIncludeSmartCharger(false);
-                setHasElectricVehicle(false);
-              }
-            }}
-            className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-          />
-          <label htmlFor="enableStorage" className="text-sm text-gray-600">
-            Je souhaite une solution de stockage
-          </label>
-        </div>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={showOptions}
+              onChange={(e) => {
+                setShowOptions(e.target.checked);
+                if (!e.target.checked) {
+                  onChange({
+                    type: null,
+                    resetAutoconsommation: defaultAutoconsommation
+                  });
+                  setIncludeSmartCharger(false);
+                  setHasElectricVehicle(false);
+                }
+              }}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          </div>
+          <span className="ml-3 text-sm font-medium text-gray-700">Je souhaite une solution de stockage</span>
+        </label>
       </div>
 
       {showOptions && (
