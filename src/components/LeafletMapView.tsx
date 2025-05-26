@@ -24,6 +24,7 @@ export default function LeafletMapView({ coordinates, onCoordinatesChange }: Lea
     // Vérifier si la clé API est disponible
     if (!apiKey) {
       console.error('Google Maps API key is missing');
+      console.log('Environment variables available:', import.meta.env);
       setError('Clé API Google Maps manquante');
       return '';
     }
