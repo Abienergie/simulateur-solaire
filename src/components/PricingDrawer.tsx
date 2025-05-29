@@ -55,7 +55,8 @@ export default function PricingDrawer({
     discount, 
     freeMonths, 
     freeDeposit, 
-    freeBatterySetup
+    freeBatterySetup,
+    freeSmartBatterySetup
   } = usePromoCode(financingMode);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [promoCodeMessage, setPromoCodeMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -67,7 +68,7 @@ export default function PricingDrawer({
   
   // Setup fees
   const myBatteryFee = isMyBattery ? (freeBatterySetup ? 0 : 179) : 0;
-  const smartBatteryFee = isSmartBattery ? 2000 : 0;
+  const smartBatteryFee = isSmartBattery ? (freeSmartBatterySetup ? 0 : 2000) : 0;
   const setupFees = myBatteryFee + smartBatteryFee;
 
   // Calculate totals
@@ -76,7 +77,8 @@ export default function PricingDrawer({
     ? preTotalPrice - discount
     : 0;
   const monthlyTotal = subscriptionPrice + (myLightPrice / 12);
-  const securityDeposit = monthlyTotal * 2;
+  // Calculate security deposit based only on subscription price, not including MyLight
+  const securityDeposit = subscriptionPrice * 2;
 
   // Calculate monthly MyLight/Battery cost even in cash mode
   const monthlyBatteryCost = isMyBattery 
@@ -120,6 +122,26 @@ export default function PricingDrawer({
     localStorage.setItem('mountingSystemCost', mountingSystemCost.toString());
     localStorage.setItem('subscriptionPrice', subscriptionPrice.toString());
     localStorage.setItem('subscriptionDuration', duration.toString());
+    
+    // Save promo code information
+    if (discount > 0) {
+      localStorage.setItem('promo_discount', discount.toString());
+    }
+    if (freeMonths > 0) {
+      localStorage.setItem('promo_free_months', freeMonths.toString());
+    }
+    if (freeDeposit) {
+      localStorage.setItem('promo_free_deposit', 'true');
+    }
+    if (freeBatterySetup) {
+      localStorage.setItem('promo_free_battery_setup', 'true');
+    }
+    if (freeSmartBatterySetup) {
+      localStorage.setItem('promo_free_smart_battery_setup', 'true');
+    }
+    if (validPromoCodes.length > 0) {
+      localStorage.setItem('applied_promo_codes', JSON.stringify(validPromoCodes.map(code => code.code)));
+    }
   }, [
     financingMode, 
     batterySelection, 
@@ -132,7 +154,13 @@ export default function PricingDrawer({
     setupFees, 
     mountingSystemCost, 
     subscriptionPrice, 
-    duration
+    duration,
+    discount,
+    freeMonths,
+    freeDeposit,
+    freeBatterySetup,
+    freeSmartBatterySetup,
+    validPromoCodes
   ]);
 
   // Clear promo codes when drawer is closed
@@ -298,7 +326,11 @@ export default function PricingDrawer({
                           <Battery className="h-4 w-4 text-gray-400" />
                           <span className="text-gray-600">Frais de mise en service SmartBattery</span>
                         </div>
-                        <span className="font-medium">{formatCurrency(smartBatteryFee)}</span>
+                        {freeSmartBatterySetup ? (
+                          <span className="font-medium line-through">{formatCurrency(2000)}</span>
+                        ) : (
+                          <span className="font-medium">{formatCurrency(2000)}</span>
+                        )}
                       </div>
                     )}
 
@@ -320,7 +352,7 @@ export default function PricingDrawer({
                               <Ticket className="h-4 w-4 text-purple-500" />
                               <span className="text-purple-600">Code promo {code.code}</span>
                             </div>
-                            {code.discount > 0 && (
+                            {code.discount > 0 && code.subscription_effect !== 'free_smart_battery_setup' && code.subscription_effect !== 'free_battery_setup' && (
                               <span className="font-medium text-purple-600">-{formatCurrency(code.discount)}</span>
                             )}
                           </div>
@@ -439,10 +471,22 @@ export default function PricingDrawer({
                           <Battery className="h-4 w-4 text-yellow-600" />
                           <h4 className="text-sm font-medium text-yellow-900">Frais de mise en service SmartBattery</h4>
                         </div>
-                        <div className="flex justify-between text-sm text-yellow-800">
-                          <span>Frais unique de mise en service</span>
-                          <span className="font-medium">{formatCurrency(smartBatteryFee)}</span>
-                        </div>
+                        {freeSmartBatterySetup ? (
+                          <div className="flex justify-between text-sm text-yellow-800">
+                            <span className="line-through">Frais unique de mise en service</span>
+                            <span className="font-medium line-through">{formatCurrency(2000)}</span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between text-sm text-yellow-800">
+                            <span>Frais unique de mise en service</span>
+                            <span className="font-medium">{formatCurrency(2000)}</span>
+                          </div>
+                        )}
+                        {freeSmartBatterySetup && (
+                          <p className="text-xs text-green-700 mt-1 font-medium">
+                            Frais de mise en service offerts avec le code {validPromoCodes.find(c => c.subscription_effect === 'free_smart_battery_setup')?.code}
+                          </p>
+                        )}
                       </div>
                     )}
 
