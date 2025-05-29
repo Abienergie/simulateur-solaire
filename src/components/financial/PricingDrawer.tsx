@@ -71,23 +71,14 @@ export default function PricingDrawer({
   const smartBatteryFee = isSmartBattery ? (freeSmartBatterySetup ? 0 : 2000) : 0;
   const setupFees = myBatteryFee + smartBatteryFee;
 
-  // Calculate totals - CORRECTION DU CALCUL
-  // Ajouter tous les coûts de base, y compris les frais de mise en service
-  const baseCosts = basePrice + enphasePrice + batteryPrice + smartChargerPrice + mountingSystemCost;
-  
-  // Ajouter les frais de mise en service (qui peuvent être à 0 si offerts par un code promo)
-  const totalSetupFees = setupFees;
-  
-  // Soustraire la prime à l'autoconsommation si en mode surplus
-  const subsidyAmount = connectionType === 'surplus' ? primeAutoconsommation : 0;
-  
-  // Calculer le total final
+  // Calculate totals
+  const preTotalPrice = basePrice + enphasePrice + batteryPrice + smartChargerPrice + setupFees + mountingSystemCost - (connectionType === 'surplus' ? primeAutoconsommation : 0);
   const cashTotalPrice = financingMode === 'cash' 
-    ? baseCosts + totalSetupFees - subsidyAmount - discount
+    ? preTotalPrice - discount
     : 0;
-    
   const monthlyTotal = subscriptionPrice + (myLightPrice / 12);
-  const securityDeposit = monthlyTotal * 2;
+  // Calculate security deposit based only on subscription price, not including MyLight
+  const securityDeposit = subscriptionPrice * 2;
 
   // Calculate monthly MyLight/Battery cost even in cash mode
   const monthlyBatteryCost = isMyBattery 
@@ -335,11 +326,7 @@ export default function PricingDrawer({
                           <Battery className="h-4 w-4 text-gray-400" />
                           <span className="text-gray-600">Frais de mise en service SmartBattery</span>
                         </div>
-                        {freeSmartBatterySetup ? (
-                          <span className="font-medium line-through">{formatCurrency(2000)}</span>
-                        ) : (
-                          <span className="font-medium">{formatCurrency(2000)}</span>
-                        )}
+                        <span className="font-medium">{formatCurrency(smartBatteryFee)}</span>
                       </div>
                     )}
 
@@ -361,7 +348,7 @@ export default function PricingDrawer({
                               <Ticket className="h-4 w-4 text-purple-500" />
                               <span className="text-purple-600">Code promo {code.code}</span>
                             </div>
-                            {code.discount > 0 && code.subscription_effect !== 'free_smart_battery_setup' && code.subscription_effect !== 'free_battery_setup' && (
+                            {code.discount > 0 && (
                               <span className="font-medium text-purple-600">-{formatCurrency(code.discount)}</span>
                             )}
                           </div>

@@ -1,38 +1,53 @@
-import { jsPDF } from 'jspdf';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
+import { formatCurrency } from './formatters';
+import { FinancialProjection } from '../types/financial';
+import { getShadingLabel } from './shadingLabels';
+import { getOrientationCoefficient } from './orientationCoefficients';
+import { getOrientationLabel } from './orientationMapping';
 
-interface PdfFormData {
-  // Add your form data interface here
-  dureeAbonnement?: number;
-  projectionAnnuelle?: Array<{
-    coutAbonnement: number;
-  }>;
+interface ClientInfo {
+  nom: string;
+  prenom: string;
+  telephone: string;
+  email: string;
+  adresse: string;
+  codePostal: string;
+  ville: string;
+  region: string;
+  date: string;
+  ensoleillement: string;
+  conseiller: string;
+  telephoneConseiller: string;
+  commentaire: string;
+  coordinates?: {
+    lat: number;
+    lon: number;
+  };
+  civilite: string;
+  pdl?: string;
 }
 
-export const fillPdfForm = async (formData: PdfFormData) => {
-  const doc = new jsPDF();
-  
-  // Add form filling logic here
-  const monthlyPayment = formData.dureeAbonnement && formData.projectionAnnuelle?.[0]?.coutAbonnement 
-    ? formData.projectionAnnuelle[0].coutAbonnement / 12 
-    : 0;
-    
-  // Add content to PDF
-  doc.setFontSize(12);
-  doc.text('Form Data:', 20, 20);
-  doc.text(`Monthly Payment: ${monthlyPayment}€`, 20, 30);
-  
-  return doc;
-};
+interface InstallationInfo {
+  typeCompteur: string;
+  consommationAnnuelle: number;
+  orientation: number;
+  inclinaison: number;
+  masqueSolaire: number;
+  puissanceCrete: number;
+  degradationPanneau: number;
+  nombreModules?: number;
+  surfaceTotale?: number;
+  pertes?: number;
+}
 
-export const downloadPdf = async (formData: PdfFormData) => {
-  const doc = await fillPdfForm(formData);
-  doc.save('form.pdf');
-};
+interface PricingItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
 
-export const previewPdf = async (formData: PdfFormData) => {
-  const doc = await fillPdfForm(formData);
-  const pdfDataUri = doc.output('datauristring');
-  
-  // Open PDF in new window
-  window.open(pdfDataUri);
-};
+interface SubscriptionDetails {
+  monthlyPayment: number;
+  duratio

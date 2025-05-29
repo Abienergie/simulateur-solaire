@@ -59,11 +59,58 @@ export default function SolarForm() {
   }, [params, setResult]);
 
   const handleReset = () => {
+    // Reset client info and address
     resetClientInfo();
+    
+    // Reset solar data
     resetData();
+    
+    // Reset result
     setResult(null);
+    
+    // Reset calculation state
     setCalculating(false);
     setError(null);
+    
+    // Clear battery selection
+    localStorage.removeItem('batterySelection');
+    
+    // Clear financial data
+    localStorage.removeItem('financialMode');
+    localStorage.removeItem('primeAutoconsommation');
+    localStorage.removeItem('remiseCommerciale');
+    localStorage.removeItem('subscriptionDuration');
+    localStorage.removeItem('connectionType');
+    
+    // Clear promo codes
+    localStorage.removeItem('applied_promo_codes');
+    localStorage.removeItem('promo_discount');
+    localStorage.removeItem('promo_free_months');
+    localStorage.removeItem('promo_free_deposit');
+    localStorage.removeItem('promo_free_battery_setup');
+    localStorage.removeItem('promo_free_smart_battery_setup');
+    
+    // Clear other data
+    localStorage.removeItem('revenuFiscal');
+    localStorage.removeItem('selectedPower');
+    localStorage.removeItem('inverterType');
+    localStorage.removeItem('bifacial');
+    localStorage.removeItem('mountingSystem');
+    localStorage.removeItem('satellite_image_url');
+    localStorage.removeItem('projection20ans_png');
+    localStorage.removeItem('financial_projection');
+    localStorage.removeItem('monthly_payment');
+    localStorage.removeItem('subscription_deposit');
+    localStorage.removeItem('quote_pdf_url');
+    localStorage.removeItem('commercial_id');
+    localStorage.removeItem('enedis_consumption_data');
+    localStorage.removeItem('enedis_usage_point_id');
+    localStorage.removeItem('enedis_access_token');
+    localStorage.removeItem('enedis_refresh_token');
+    localStorage.removeItem('enedis_token_expires');
+    localStorage.removeItem('enedis_raw_response');
+    
+    console.log('All data has been reset');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
