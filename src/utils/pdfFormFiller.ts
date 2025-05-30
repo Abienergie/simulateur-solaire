@@ -50,4 +50,5 @@ interface PricingItem {
 
 interface SubscriptionDetails {
   monthlyPayment: number;
-  duratio
+  duration: number;
+}
