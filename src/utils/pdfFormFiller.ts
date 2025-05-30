@@ -307,7 +307,7 @@ function getPricingDataFromStorage(): PricingData | null {
       const roundedPower = Math.round(puissanceCrete * 2) / 2;
       const monthlyPayment = subscriptionTable[duration.toString()]?.[roundedPower] || 0;
       
-      // Calculate deposit (2 months) - ONLY based on subscription price, not MyLight
+      // Calculate deposit (2 months) - ONLY based on subscription price, not including MyLight
       const deposit = monthlyPayment * 2;
       
       subscriptionDetails = {
@@ -979,19 +979,19 @@ export async function fillPdfForm(
               
               // Calculate image dimensions to fit the page width while maintaining aspect ratio
               const { width: imgWidth, height: imgHeight } = img.scale(1);
-              const maxWidth = page5Width - 60; // Reduced margin for larger image
+              const maxWidth = page5Width - 30; // Further reduced margin for larger image
               const scale = maxWidth / imgWidth;
-              const drawHeight = imgHeight * scale; // Full height without reduction
+              const drawHeight = imgHeight * scale * 1.4; // Increased height by 40%
               
               // Draw the image - Moved up by 1cm (28.35 points)
               page5.drawImage(img, {
-                x: 30, // Reduced left margin
+                x: 15, // Further reduced left margin
                 y: page5Height - 120 - drawHeight, // Moved up by 1cm (28.35 points)
                 width: maxWidth,
                 height: drawHeight
               });
               
-              console.log('Projection image embedded successfully with full size');
+              console.log('Projection image embedded successfully with significantly increased size');
             }
           } catch (imgError) {
             console.warn('Failed to embed projection image:', imgError);
@@ -1000,11 +1000,11 @@ export async function fillPdfForm(
         } else {
           // If no image is available, draw the table manually
           // Draw table headers - Moved up by 1cm (28.35 points)
-          const tableX = 40;
+          const tableX = 20; // Further reduced margin
           const tableY = page5Height - 120; // Moved up by 1cm (28.35 points)
-          const tableWidth = page5Width - 80;
-          const rowHeight = 20; // Reduced from 22 to 20
-          const headerHeight = 25; // Reduced from 28 to 25
+          const tableWidth = page5Width - 40; // Further increased width
+          const rowHeight = 24; // Increased from 22 to 24
+          const headerHeight = 30; // Increased from 28 to 30
           
           // Define columns based on financing mode
           const isSubscription = projection.projectionAnnuelle[0].coutAbonnement > 0;
@@ -1033,12 +1033,12 @@ export async function fillPdfForm(
           // Draw header texts with larger font size
           for (let i = 0; i < columns.length; i++) {
             const col = columns[i];
-            const textWidth = embeddedBoldFont.widthOfTextAtSize(col, 10); // Reduced from 11 to 10
+            const textWidth = embeddedBoldFont.widthOfTextAtSize(col, 12); // Increased from 11 to 12
             const textX = tableX + (i * colWidth) + (colWidth / 2) - (textWidth / 2);
             page5.drawText(col, {
               x: textX,
               y: tableY + headerHeight/2 - 5,
-              size: 10, // Reduced from 11 to 10
+              size: 12, // Increased from 11 to 12
               font: embeddedBoldFont,
               color: rgb(0.2, 0.2, 0.2)
             });
@@ -1082,15 +1082,15 @@ export async function fillPdfForm(
             values.push(formatCurrency(year.gainTotal));
             values.push(formatCurrency(cumulativeGain));
             
-            // Draw each cell with smaller font size
+            // Draw each cell with larger font size
             for (let j = 0; j < values.length; j++) {
               const value = values[j];
-              const cellWidth = embeddedFont.widthOfTextAtSize(value, 9); // Reduced from 10 to 9
+              const cellWidth = embeddedFont.widthOfTextAtSize(value, 11); // Increased from 10 to 11
               const cellX = tableX + (j * colWidth) + (colWidth / 2) - (cellWidth / 2);
               page5.drawText(value, {
                 x: cellX,
                 y: rowY + rowHeight/2 - 5,
-                size: 9, // Reduced from 10 to 9
+                size: 11, // Increased from 10 to 11
                 font: embeddedFont,
                 color: rgb(0.2, 0.2, 0.2)
               });
