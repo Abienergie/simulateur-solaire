@@ -467,17 +467,10 @@ export default function PricingDrawer({
                           <Battery className="h-4 w-4 text-yellow-600" />
                           <h4 className="text-sm font-medium text-yellow-900">Frais de mise en service SmartBattery</h4>
                         </div>
-                        {freeSmartBatterySetup ? (
-                          <div className="flex justify-between text-sm text-yellow-800">
-                            <span className="line-through">Frais unique de mise en service</span>
-                            <span className="font-medium line-through">{formatCurrency(2000)}</span>
-                          </div>
-                        ) : (
-                          <div className="flex justify-between text-sm text-yellow-800">
-                            <span>Frais unique de mise en service</span>
-                            <span className="font-medium">{formatCurrency(2000)}</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between text-sm text-yellow-800">
+                          <span>Frais unique de mise en service</span>
+                          <span className="font-medium">{formatCurrency(smartBatteryFee)}</span>
+                        </div>
                         {freeSmartBatterySetup && (
                           <p className="text-xs text-green-700 mt-1 font-medium">
                             Frais de mise en service offerts avec le code {validPromoCodes.find(c => c.subscription_effect === 'free_smart_battery_setup')?.code}

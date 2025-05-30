@@ -41,7 +41,7 @@ export default function ProjectionTable({ projection }: ProjectionTableProps) {
           backgroundColor: 'white',
           useCORS: true,
           scrollY: -window.scrollY,
-          scale: 2, // Double resolution for better quality
+          scale: 4, // Increased from 2 to 4 for better quality
           logging: false,
           allowTaint: true,
           foreignObjectRendering: false
@@ -49,7 +49,7 @@ export default function ProjectionTable({ projection }: ProjectionTableProps) {
         
         const dataUrl = canvas.toDataURL('image/png');
         localStorage.setItem('projection20ans_png', dataUrl);
-        console.log('Projection table captured automatically for PDF');
+        console.log('Projection table captured automatically for PDF with scale 4');
       } catch (error) {
         console.error('Error capturing projection table:', error);
       }
