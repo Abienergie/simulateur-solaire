@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   ClipboardList, Calculator, FileText, 
   DoorOpen, CheckSquare,
-  Settings, Link, Briefcase, Beaker, FileDown
+  Settings, Link, Briefcase, Beaker, FileDown, BookOpen
 } from 'lucide-react';
 import { useClient } from '../contexts/client';
 import { scrollToTop } from '../utils/scroll';
@@ -80,6 +80,10 @@ export default function StepNavigation({ isCollapsed }: StepNavigationProps) {
 
     navigate(path);
     scrollToTop();
+  };
+
+  const openBrochure = () => {
+    window.open('https://xpxbxfuckljqdvkajlmx.supabase.co/storage/v1/object/public/book//BROCHURE%20ABIE%20V2.pdf', '_blank');
   };
 
   return (
@@ -169,6 +173,18 @@ export default function StepNavigation({ isCollapsed }: StepNavigationProps) {
             }`} />
             {!isCollapsed && (
               <span className="text-sm font-medium">Test iColl</span>
+            )}
+          </button>
+
+          {/* Book link */}
+          <button
+            onClick={openBrochure}
+            title={isCollapsed ? 'Brochure commerciale' : undefined}
+            className="w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-gray-600 hover:bg-white/75"
+          >
+            <BookOpen className="h-5 w-5 text-gray-400" />
+            {!isCollapsed && (
+              <span className="text-sm font-medium">Brochure commerciale</span>
             )}
           </button>
         </div>
