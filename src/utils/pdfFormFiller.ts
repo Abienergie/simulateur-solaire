@@ -52,3 +52,4 @@ interface SubscriptionDetails {
   monthlyPayment: number;
   duration: number;
 }
+export { fillPdfForm, downloadPdf, previewPdf };
