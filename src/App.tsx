@@ -18,7 +18,6 @@ import Report from './pages/Report';
 import PdfGenerator from './pages/PdfGenerator';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginForm from './components/LoginForm';
-import TechnicalDatasheetSelector from "./components/TechnicalDatasheetSelector";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -37,7 +36,6 @@ export default function App() {
         <FinancialSettingsProvider>
           <div className="min-h-screen flex flex-col">
             <Header />
-  <TechnicalDatasheetSelector />
 
             <Layout>
               <Routes>
