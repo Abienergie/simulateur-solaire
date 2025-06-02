@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Battery, CreditCard, Clock, Zap, Shield, Coins, Wrench, Ticket, X } from 'lucide-react';
+import { Battery, CreditCard, Clock, Zap, Shield, Coins, Wrench, Ticket, X, BarChart3 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { useFinancialSettings } from '../../contexts/FinancialSettingsContext';
 import { usePromoCode } from '../../hooks/usePromoCode';
@@ -61,6 +61,9 @@ export default function PricingDrawer({
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [promoCodeMessage, setPromoCodeMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [showSpecialCodes, setShowSpecialCodes] = useState(false);
+  const [includeEcojoko, setIncludeEcojoko] = useState(false);
+  const [freeEcojoko, setFreeEcojoko] = useState(false);
+  const ecojokoPrice = 229;
 
   // Battery type checks
   const isMyBattery = batterySelection?.type === 'mybattery';
@@ -72,7 +75,7 @@ export default function PricingDrawer({
   const setupFees = myBatteryFee + smartBatteryFee;
 
   // Calculate totals
-  const preTotalPrice = basePrice + enphasePrice + batteryPrice + smartChargerPrice + setupFees + mountingSystemCost - (connectionType === 'surplus' ? primeAutoconsommation : 0);
+  const preTotalPrice = basePrice + enphasePrice + batteryPrice + smartChargerPrice + setupFees + mountingSystemCost + (includeEcojoko && !freeEcojoko ? ecojokoPrice : 0) - (connectionType === 'surplus' ? primeAutoconsommation : 0);
   const cashTotalPrice = financingMode === 'cash' 
     ? preTotalPrice - discount
     : 0;
@@ -93,6 +96,12 @@ export default function PricingDrawer({
   // Calculate monthly discount for subscription mode
   // Dividing by total months (duration * 12) instead of just 12
   const monthlyDiscount = discount / (duration * 12);
+
+  // Check for ECOJOKOFREE promo code
+  useEffect(() => {
+    const hasEcojokoFree = validPromoCodes.some(code => code.code === 'ECOJOKOFREE');
+    setFreeEcojoko(hasEcojokoFree);
+  }, [validPromoCodes]);
 
   // Save pricing data to localStorage for PDF generation
   useEffect(() => {
@@ -122,6 +131,8 @@ export default function PricingDrawer({
     localStorage.setItem('mountingSystemCost', mountingSystemCost.toString());
     localStorage.setItem('subscriptionPrice', subscriptionPrice.toString());
     localStorage.setItem('subscriptionDuration', duration.toString());
+    localStorage.setItem('includeEcojoko', includeEcojoko.toString());
+    localStorage.setItem('freeEcojoko', freeEcojoko.toString());
     
     // Save promo code information
     if (discount > 0) {
@@ -138,6 +149,9 @@ export default function PricingDrawer({
     }
     if (freeSmartBatterySetup) {
       localStorage.setItem('promo_free_smart_battery_setup', 'true');
+    }
+    if (freeEcojoko) {
+      localStorage.setItem('promo_free_ecojoko', 'true');
     }
     if (validPromoCodes.length > 0) {
       localStorage.setItem('applied_promo_codes', JSON.stringify(validPromoCodes.map(code => code.code)));
@@ -160,8 +174,18 @@ export default function PricingDrawer({
     freeDeposit,
     freeBatterySetup,
     freeSmartBatterySetup,
-    validPromoCodes
+    validPromoCodes,
+    includeEcojoko,
+    freeEcojoko
   ]);
+
+  // Load Ecojoko preference from localStorage
+  useEffect(() => {
+    const savedEcojoko = localStorage.getItem('includeEcojoko');
+    if (savedEcojoko) {
+      setIncludeEcojoko(savedEcojoko === 'true');
+    }
+  }, []);
 
   // Clear promo codes when drawer is closed
   useEffect(() => {
@@ -177,6 +201,20 @@ export default function PricingDrawer({
         type: 'error',
         message: 'Veuillez saisir un code promo'
       });
+      return;
+    }
+    
+    // Special handling for ECOJOKOFREE
+    if (promoCodeInput.toUpperCase() === 'ECOJOKOFREE') {
+      setFreeEcojoko(true);
+      setIncludeEcojoko(true);
+      localStorage.setItem('freeEcojoko', 'true');
+      localStorage.setItem('includeEcojoko', 'true');
+      setPromoCodeMessage({
+        type: 'success',
+        message: 'Option Ecojoko offerte !'
+      });
+      setPromoCodeInput('');
       return;
     }
     
@@ -197,6 +235,17 @@ export default function PricingDrawer({
 
   // Remove a specific promo code
   const handleRemovePromoCode = (code: string) => {
+    if (code === 'ECOJOKOFREE') {
+      setFreeEcojoko(false);
+      localStorage.removeItem('freeEcojoko');
+      localStorage.removeItem('promo_free_ecojoko');
+      setPromoCodeMessage({
+        type: 'success',
+        message: 'Code promo Ecojoko supprimé'
+      });
+      return;
+    }
+    
     clearPromoCodes();
     setPromoCodeMessage({
       type: 'success',
@@ -330,6 +379,20 @@ export default function PricingDrawer({
                       </div>
                     )}
 
+                    {includeEcojoko && (
+                      <div className="flex justify-between text-sm">
+                        <div className="flex items-center gap-1">
+                          <BarChart3 className="h-4 w-4 text-gray-400" />
+                          <span className="text-gray-600">Option Ecojoko</span>
+                        </div>
+                        {freeEcojoko ? (
+                          <span className="font-medium line-through">{formatCurrency(ecojokoPrice)}</span>
+                        ) : (
+                          <span className="font-medium">{formatCurrency(ecojokoPrice)}</span>
+                        )}
+                      </div>
+                    )}
+
                     {showSubsidy && primeAutoconsommation > 0 && (
                       <div className="flex justify-between text-sm">
                         <div className="flex items-center gap-1">
@@ -381,6 +444,20 @@ export default function PricingDrawer({
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">MyLight (mensuel)</span>
                         <span className="font-medium">{formatCurrency(myLightPrice / 12)}</span>
+                      </div>
+                    )}
+
+                    {includeEcojoko && (
+                      <div className="flex justify-between text-sm">
+                        <div className="flex items-center gap-1">
+                          <BarChart3 className="h-4 w-4 text-gray-400" />
+                          <span className="text-gray-600">Option Ecojoko</span>
+                        </div>
+                        {freeEcojoko ? (
+                          <span className="font-medium line-through">{formatCurrency(ecojokoPrice)}</span>
+                        ) : (
+                          <span className="font-medium">{formatCurrency(ecojokoPrice)}</span>
+                        )}
                       </div>
                     )}
 
@@ -502,9 +579,14 @@ export default function PricingDrawer({
                   <Ticket className="h-4 w-4 text-purple-500" />
                   <h4 className="text-sm font-medium text-gray-900">Code promo</h4>
                 </div>
-                {validPromoCodes.length > 0 && (
+                {(validPromoCodes.length > 0 || freeEcojoko) && (
                   <button
-                    onClick={() => clearPromoCodes()}
+                    onClick={() => {
+                      clearPromoCodes();
+                      setFreeEcojoko(false);
+                      localStorage.removeItem('freeEcojoko');
+                      localStorage.removeItem('promo_free_ecojoko');
+                    }}
                     className="text-xs text-red-500 hover:text-red-700"
                   >
                     Effacer tout
@@ -513,7 +595,7 @@ export default function PricingDrawer({
               </div>
               
               {/* Liste des codes promo appliqués */}
-              {validPromoCodes.length > 0 && (
+              {(validPromoCodes.length > 0 || freeEcojoko) && (
                 <div className="mb-3 space-y-1">
                   {validPromoCodes.map(code => (
                     <div key={code.id} className="flex items-center justify-between bg-purple-50 px-3 py-1.5 rounded-md">
@@ -529,6 +611,21 @@ export default function PricingDrawer({
                       </button>
                     </div>
                   ))}
+                  
+                  {freeEcojoko && (
+                    <div className="flex items-center justify-between bg-purple-50 px-3 py-1.5 rounded-md">
+                      <div className="flex items-center gap-1.5">
+                        <Ticket className="h-3.5 w-3.5 text-purple-500" />
+                        <span className="text-sm font-medium text-purple-700">ECOJOKOFREE</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemovePromoCode('ECOJOKOFREE')}
+                        className="text-purple-400 hover:text-purple-600"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -558,6 +655,53 @@ export default function PricingDrawer({
                 <p className="text-xs mt-2 text-amber-600">
                   Seuls les codes promo spécifiques à l'abonnement sont acceptés
                 </p>
+              )}
+            </div>
+            
+            {/* Option Ecojoko en bas du drawer */}
+            <div className="bg-white rounded-lg p-4 shadow-sm mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-blue-500" />
+                  <h4 className="text-sm font-medium text-gray-900">Option Ecojoko</h4>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeEcojoko}
+                    onChange={(e) => setIncludeEcojoko(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <span className="ml-3 text-sm font-medium text-gray-700">
+                    {freeEcojoko ? (
+                      <span className="line-through">{formatCurrency(ecojokoPrice)}</span>
+                    ) : (
+                      formatCurrency(ecojokoPrice)
+                    )}
+                  </span>
+                </label>
+              </div>
+              
+              {includeEcojoko && (
+                <div className="mt-3">
+                  <img 
+                    src="https://xpxbxfuckljqdvkajlmx.supabase.co/storage/v1/object/public/graphique//Ecojoko_surplus.png"
+                    alt="Schéma Ecojoko"
+                    className="w-full rounded-lg border border-gray-200"
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    L'assistant connecté pour <strong>mieux autoconsommer au quotidien</strong> !
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Recevez des alertes lorsque votre seuil de production est dépassé !
+                  </p>
+                  {freeEcojoko && (
+                    <p className="text-xs text-green-600 mt-2 font-medium">
+                      Option offerte avec le code ECOJOKOFREE
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
