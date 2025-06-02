@@ -4,6 +4,7 @@ import { fillPdfForm, downloadPdf, previewPdf } from '../utils/pdfFormFiller';
 import { mergePdfs } from '../utils/pdfMerger';
 import { FinancialProjection } from '../types/financial';
 import PdfAttachmentUploader from './PdfAttachmentUploader';
+import TechnicalDatasheetSelector from './TechnicalDatasheetSelector';
 
 interface PdfAttachment {
   id: string;
@@ -65,6 +66,7 @@ export default function PdfReportGenerator({
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<PdfAttachment[]>([]);
   const [mapImageData, setMapImageData] = useState<string | null>(null);
+  const [selectedDatasheets, setSelectedDatasheets] = useState<string[]>([]);
 
   // Load satellite image from localStorage on mount
   useEffect(() => {
@@ -206,7 +208,8 @@ export default function PdfReportGenerator({
         safeClientInfo,
         safeInstallation,
         mapImageData,
-        projection
+        projection,
+        selectedDatasheets
       );
       
       // Si des pièces jointes sont présentes, les fusionner avec le PDF principal
@@ -287,6 +290,13 @@ export default function PdfReportGenerator({
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
+      
+      <div className="border-t border-gray-200 pt-4">
+        <TechnicalDatasheetSelector
+          selectedDatasheets={selectedDatasheets}
+          onSelectedDatasheetsChange={setSelectedDatasheets}
+        />
+      </div>
       
       <div className="border-t border-gray-200 pt-4">
         <PdfAttachmentUploader 
