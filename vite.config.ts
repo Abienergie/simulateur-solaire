@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/simulateur-solaire/',
+  base: '/',  // 🔥 Modifié pour le sous-domaine simulateur.abienergie.fr
   build: {
     outDir: 'dist',
     sourcemap: false,
@@ -22,6 +22,5 @@ export default defineConfig({
     strictPort: false,
     host: true
   },
-  // Ensure environment variables are properly loaded
   envPrefix: 'VITE_'
 });
