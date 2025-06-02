@@ -79,6 +79,14 @@ const SUBSCRIPTION_PROMO_CODES: PromoCode[] = [
     expiration_date: null,
     created_at: new Date().toISOString(),
     subscription_effect: 'free_smart_battery_setup'
+  },
+  {
+    id: 'ecojokofree',
+    code: 'ECOJOKOFREE',
+    discount: 229,
+    active: true,
+    expiration_date: null,
+    created_at: new Date().toISOString()
   }
 ];
 
@@ -104,6 +112,14 @@ const LOCAL_PROMO_CODES: PromoCode[] = [
     id: 'printemps',
     code: 'PRINTEMPS',
     discount: 250,
+    active: true,
+    expiration_date: null,
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'ecojokofree',
+    code: 'ECOJOKOFREE',
+    discount: 229,
     active: true,
     expiration_date: null,
     created_at: new Date().toISOString()
@@ -206,6 +222,12 @@ export function usePromoCode(financingMode: 'cash' | 'subscription' = 'cash') {
             setLoading(false);
             return;
           }
+        }
+        
+        // For ECOJOKOFREE, it works in both modes
+        if (subscriptionCode.code === 'ECOJOKOFREE') {
+          updateValidPromoCodes(subscriptionCode);
+          return;
         }
         
         // For other subscription codes, they only work in subscription mode
@@ -365,6 +387,11 @@ export function usePromoCode(financingMode: 'cash' | 'subscription' = 'cash') {
       return { success: false, message: 'Vous ne pouvez appliquer que 2 codes promo maximum' };
     }
     
+    // Check if it's the ECOJOKOFREE code which works for both modes
+    if (code.toUpperCase() === 'ECOJOKOFREE') {
+      return { success: true };
+    }
+    
     // Check if it's the BATTERYFREE code which works for both modes
     if (code.toUpperCase() === 'BATTERYFREE') {
       const batteryFreeCode = SUBSCRIPTION_PROMO_CODES.find(c => c.code === 'BATTERYFREE');
@@ -392,7 +419,7 @@ export function usePromoCode(financingMode: 'cash' | 'subscription' = 'cash') {
       c => c.code.toUpperCase() === code.toUpperCase() && c.active
     );
     
-    if (subscriptionCode && subscriptionCode.code !== 'BATTERYFREE' && subscriptionCode.code !== 'SMARTFREE') {
+    if (subscriptionCode && subscriptionCode.code !== 'BATTERYFREE' && subscriptionCode.code !== 'SMARTFREE' && subscriptionCode.code !== 'ECOJOKOFREE') {
       // Si on est en mode abonnement, on peut appliquer les codes promo d'abonnement
       if (financingMode === 'subscription') {
         // Check if we're trying to add a free months code when we already have one
@@ -409,7 +436,7 @@ export function usePromoCode(financingMode: 'cash' | 'subscription' = 'cash') {
     }
     
     // Si on est en mode abonnement, on ne peut pas appliquer les codes promo standards
-    if (financingMode === 'subscription' && code.toUpperCase() !== 'BATTERYFREE') {
+    if (financingMode === 'subscription' && code.toUpperCase() !== 'BATTERYFREE' && code.toUpperCase() !== 'ECOJOKOFREE') {
       return { success: false, message: 'Ce code promo n\'est pas valable pour les abonnements' };
     }
     
