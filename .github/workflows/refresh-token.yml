@@ -2,20 +2,19 @@ name: Refresh Enedis OAuth Token
 
 on:
   schedule:
-    - cron: '0 */3 * * *'    # toutes les 3 heures, minute 0
-  workflow_dispatch:        # lancement manuel
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
 
 jobs:
   refresh-token:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Debug & Refresh Enedis Token
+      - name: Test direct call (contournement)
         run: |
-          # 1) On affiche pour vérification
-          echo "Calling: ${{ secrets.SUPABASE_URL }}/functions/v1/enedis-active-token"
-          # 2) On appelle la fonction avec la clé service-role
-          curl -X POST "${{ secrets.SUPABASE_URL }}/functions/v1/enedis-active-token" \
+          # On hardcode l'URL directement pour voir si curl passe
+          echo "Calling: https://xpxbxfuckljqdvkajlmx.supabase.co/functions/v1/enedis-active-token"
+          curl -X POST "https://xpxbxfuckljqdvkajlmx.supabase.co/functions/v1/enedis-active-token" \
             -H "Content-Type: application/json" \
             -H "apiKey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -d '{}' \
