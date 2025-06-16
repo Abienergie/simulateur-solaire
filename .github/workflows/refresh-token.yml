@@ -3,18 +3,24 @@ name: Refresh Enedis OAuth Token
 on:
   schedule:
     - cron: '0 */3 * * *'    # toutes les 3 heures, minute 0
-  workflow_dispatch:        # permet le déclenchement manuel
+  workflow_dispatch:        # déclenchement manuel possible
 
 jobs:
   refresh-token:
     runs-on: ubuntu-latest
 
-    # <-- ces deux variables sont injectées depuis vos Secrets GitHub
+    # ← ce bloc ENV doit être ici, au même niveau que runs-on
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
+      # Étape de debug facultative pour vérifier que les variables sont bien lues
+      - name: Debug SUPABASE env vars
+        run: |
+          echo "SUPABASE_URL=${SUPABASE_URL:-<vide>}"
+          echo "SUPABASE_KEY=${SUPABASE_SERVICE_ROLE_KEY:+<non-vide>}"
+
       - name: Call Supabase Edge Function to refresh token
         run: |
           curl -X POST "$SUPABASE_URL/functions/v1/enedis-active-token" \
