@@ -2,7 +2,7 @@ name: Refresh Enedis OAuth Token
 
 on:
   schedule:
-    - cron: '0 */3 * * *'
+    - cron: '0 */3 * * *'    # toutes les 3 heures
   workflow_dispatch:
 
 jobs:
@@ -10,12 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test direct call (contournement)
+      - name: Refresh Enedis Token (Bearer Auth)
         run: |
-          # On hardcode l'URL directement pour voir si curl passe
           echo "Calling: https://xpxbxfuckljqdvkajlmx.supabase.co/functions/v1/enedis-active-token"
           curl -X POST "https://xpxbxfuckljqdvkajlmx.supabase.co/functions/v1/enedis-active-token" \
             -H "Content-Type: application/json" \
-            -H "apiKey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -d '{}' \
             --fail
