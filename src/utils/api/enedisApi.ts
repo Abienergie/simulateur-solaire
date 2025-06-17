@@ -8,10 +8,10 @@ class EnedisAPI {
     clientId: 'Y_LuB7HsQW3JWYudw7HRmN28FN8a',
     clientSecret: 'Pb9H1p8zJ4IfX0xca5c7lficGo4a',
     // URL de redirection modifiée pour pointer vers l'environnement de production
-    redirectUri: 'https://abienergie.github.io/Simulator/#/oauth/callback',
+    redirectUri: 'https://abienergie.github.io/simulateur-solaire/#/oauth/callback',
     authUrl: 'https://mon-compte-particulier.enedis.fr/dataconnect/v1/oauth2/authorize',
-    tokenUrl: 'https://gw.hml.api.enedis.fr/oauth2/v3/token',
-    apiUrl: 'https://gw.hml.api.enedis.fr/v5/metering_data',
+    tokenUrl: 'https://gw.ext.prod.api.enedis.fr/oauth2/v3/token',
+    apiUrl: 'https://gw.ext.prod.api.enedis.fr/metering_data_dc/v5',
     scope: 'fr_be_cons_detail_load_curve'
   };
 
@@ -44,61 +44,28 @@ class EnedisAPI {
     try {
       console.log('Échange du code contre un token...');
       
-      // Créer un FormData pour l'échange du code
-      const formData = new URLSearchParams();
-      formData.append('grant_type', 'authorization_code');
-      formData.append('client_id', this.config.clientId);
-      formData.append('client_secret', this.config.clientSecret);
-      formData.append('code', code);
-      formData.append('redirect_uri', this.config.redirectUri);
+      // Utiliser la fonction Edge Supabase pour l'échange de token
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const functionUrl = `${supabaseUrl}/functions/v1/enedis-auth?code=${code}&state=AbieLink1`;
       
-      console.log('Envoi de la requête au endpoint token:', this.config.tokenUrl);
-      console.log('Paramètres:', {
-        grant_type: 'authorization_code',
-        client_id: this.config.clientId,
-        client_secret: '***', // Masqué pour la sécurité
-        redirect_uri: this.config.redirectUri
-      });
-
-      // Appel à l'API Enedis pour échanger le code contre un token
-      const response = await fetch(this.config.tokenUrl, {
-        method: 'POST',
+      console.log('Appel de la fonction Edge:', functionUrl);
+      
+      const response = await fetch(functionUrl, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json'
-        },
-        body: formData.toString()
+        }
       });
-
-      console.log('Réponse reçue, status:', response.status);
-
+      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Erreur réponse token:', errorText);
-        try {
-          const error = JSON.parse(errorText);
-          throw new Error(error.error_description || 'Échec de l\'échange du token');
-        } catch (e) {
-          throw new Error(`Échec de l'échange du token: ${response.status} ${response.statusText}`);
-        }
-      }
-
-      const data = await response.json();
-      console.log('Token reçu avec succès, expires_in:', data.expires_in);
-      
-      // Stocker le token dans le localStorage
-      localStorage.setItem('enedis_access_token', data.access_token);
-      if (data.refresh_token) {
-        localStorage.setItem('enedis_refresh_token', data.refresh_token);
+        console.error('Erreur réponse fonction Edge:', errorText);
+        throw new Error(`Échec de l'échange du token: ${response.status} ${response.statusText}`);
       }
       
-      // Stocker la date d'expiration
-      const expiresAt = new Date();
-      expiresAt.setSeconds(expiresAt.getSeconds() + data.expires_in);
-      localStorage.setItem('enedis_token_expires', expiresAt.toISOString());
-      
-      this.accessToken = data.access_token;
-      console.log('Token Enedis stocké avec succès');
+      // La fonction Edge redirige directement vers l'application avec les tokens
+      // Nous n'avons pas besoin de traiter la réponse ici
+      console.log('Redirection en cours via la fonction Edge');
       
     } catch (error) {
       console.error('Erreur détaillée dans handleCallback:', error);
@@ -120,14 +87,25 @@ class EnedisAPI {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 7); // Juste une semaine pour tester
       
-      const url = `${this.config.apiUrl}/daily_consumption?usage_point_id=${prm}&start=${startDate.toISOString().split('T')[0]}&end=${endDate}`;
-      console.log('URL de test:', url);
+      // Utiliser la fonction Edge Supabase pour l'appel API
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const functionUrl = `${supabaseUrl}/functions/v1/enedis-data`;
       
-      const response = await fetch(url, {
+      console.log('Appel de la fonction Edge pour tester la connexion');
+      
+      const response = await fetch(functionUrl, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          action: 'get_consumption',
+          token,
+          prm,
+          startDate: startDate.toISOString().split('T')[0],
+          endDate
+        })
       });
 
       console.log('Réponse du test de connexion:', response.status);
@@ -166,23 +144,25 @@ class EnedisAPI {
 
       console.log(`PDL: ${prm}, Période: ${startDate} à ${endDate}`);
 
-      // Appel à l'API Enedis pour récupérer les données de consommation
-      // Utilisation de daily_consumption au lieu de consumption_load_curve
-      const url = `${this.config.apiUrl}/daily_consumption?usage_point_id=${prm}&start=${startDate}&end=${endDate}`;
-      console.log('URL de récupération des données:', url);
+      // Utiliser la fonction Edge Supabase pour l'appel API
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const functionUrl = `${supabaseUrl}/functions/v1/enedis-data`;
       
-      console.log('Envoi de la requête avec token:', token.substring(0, 10) + '...');
+      console.log('Appel de la fonction Edge pour récupérer les données');
       
-      // Utilisation d'un proxy CORS si nécessaire
-      const corsProxy = '';
-      const finalUrl = corsProxy ? `${corsProxy}${encodeURIComponent(url)}` : url;
-      
-      const response = await fetch(finalUrl, {
-        method: 'GET',
+      const response = await fetch(functionUrl, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          action: 'get_consumption',
+          token,
+          prm,
+          startDate,
+          endDate
+        })
       });
       
       console.log('Réponse reçue, status:', response.status);
@@ -268,19 +248,20 @@ class EnedisAPI {
 
   private async refreshToken(refreshToken: string): Promise<void> {
     console.log('Rafraîchissement du token...');
-    // Appel à l'API Enedis pour rafraîchir le token
-    const formData = new URLSearchParams();
-    formData.append('grant_type', 'refresh_token');
-    formData.append('client_id', this.config.clientId);
-    formData.append('client_secret', this.config.clientSecret);
-    formData.append('refresh_token', refreshToken);
-
-    const response = await fetch(this.config.tokenUrl, {
+    
+    // Utiliser la fonction Edge Supabase pour le rafraîchissement du token
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const functionUrl = `${supabaseUrl}/functions/v1/enedis-auth`;
+    
+    const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/json'
       },
-      body: formData.toString()
+      body: JSON.stringify({
+        action: 'refresh_token',
+        refresh_token: refreshToken
+      })
     });
 
     if (!response.ok) {

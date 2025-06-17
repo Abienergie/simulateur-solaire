@@ -24,6 +24,8 @@ export default function EnedisCallback() {
         let error = params.get('error');
         let state = params.get('state');
         let usagePointId = params.get('usage_point_id');
+        let accessToken = params.get('access_token');
+        let refreshToken = params.get('refresh_token');
         
         // Si les paramètres sont dans le hash, les extraire
         if (hash && hash.includes('?')) {
@@ -32,13 +34,17 @@ export default function EnedisCallback() {
           error = error || hashParams.get('error');
           state = state || hashParams.get('state');
           usagePointId = usagePointId || hashParams.get('usage_point_id');
+          accessToken = accessToken || hashParams.get('access_token');
+          refreshToken = refreshToken || hashParams.get('refresh_token');
         }
         
         console.log('Paramètres extraits:', { 
           code: code ? '***' + (code.length > 6 ? code.slice(-6) : code) : null,
           error,
           state,
-          usagePointId
+          usagePointId,
+          accessToken: accessToken ? 'Présent' : 'Absent',
+          refreshToken: refreshToken ? 'Présent' : 'Absent'
         });
 
         // Cas d'erreur
@@ -55,48 +61,58 @@ export default function EnedisCallback() {
           return;
         }
 
-        // Si nous avons un code, échanger contre un token
-        if (code) {
-          setMessage('Échange du code contre un token...');
+        // Cas où on reçoit directement un token (depuis la fonction Edge)
+        if (accessToken) {
+          console.log('Token reçu directement');
+          localStorage.setItem('enedis_access_token', accessToken);
           
-          try {
-            // Échanger le code contre un token via l'API Enedis
-            await enedisApi.handleCallback(code);
-            console.log('Échange du code réussi');
-            
-            // Si nous avons un PDL, le sauvegarder
-            if (usagePointId) {
-              console.log('Sauvegarde du PDL:', usagePointId);
-              localStorage.setItem('enedis_usage_point_id', usagePointId);
-            }
-            
-            setStatus('success');
-            setMessage('Connexion réussie, redirection...');
-            
-            setTimeout(() => {
-              navigate('/abie-link', { 
-                state: { 
-                  success: true,
-                  pdl: usagePointId,
-                  message: 'Connexion à Enedis réussie'
-                },
-                replace: true
-              });
-            }, 2000);
-          } catch (error) {
-            console.error('Erreur lors de l\'échange du code:', error);
-            setStatus('error');
-            setMessage(error instanceof Error ? error.message : 'Erreur lors de l\'échange du code');
-            
-            setTimeout(() => {
-              navigate('/abie-link', { 
-                state: { 
-                  error: error instanceof Error ? error.message : 'Échec de la connexion à Enedis'
-                },
-                replace: true
-              });
-            }, 3000);
+          if (refreshToken) {
+            localStorage.setItem('enedis_refresh_token', refreshToken);
           }
+          
+          // Stocker la date d'expiration (1 heure par défaut)
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 1);
+          localStorage.setItem('enedis_token_expires', expiresAt.toISOString());
+          
+          // Stocker le PDL
+          if (usagePointId) {
+            localStorage.setItem('enedis_usage_point_id', usagePointId);
+          }
+          
+          setStatus('success');
+          setMessage('Connexion réussie, redirection...');
+          
+          setTimeout(() => {
+            navigate('/abie-link', { 
+              state: { 
+                success: true,
+                pdl: usagePointId,
+                message: 'Connexion à Enedis réussie'
+              },
+              replace: true
+            });
+          }, 2000);
+          return;
+        }
+
+        // Cas où on reçoit un code d'autorisation
+        if (code) {
+          console.log('Code d\'autorisation reçu, échange contre un token...');
+          await enedisApi.handleCallback(code);
+          
+          setStatus('success');
+          setMessage('Connexion réussie, redirection...');
+          
+          setTimeout(() => {
+            navigate('/abie-link', { 
+              state: { 
+                success: true,
+                message: 'Connexion à Enedis réussie'
+              },
+              replace: true
+            });
+          }, 2000);
           return;
         }
 

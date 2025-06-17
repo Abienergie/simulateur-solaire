@@ -1,17 +1,13 @@
-# This is the Supabase configuration file for production
+# supabase/config.toml
+
+# Configuration production Supabase
 
 [auth]
-# URL site et redirections
+# URL du site et redirections autorisées
 site_url = "https://abienergie.github.io/Simulator"
 additional_redirect_urls = ["https://abienergie.github.io/Simulator/#/oauth/callback"]
-autoconfirm = true
-disable_signup = true
-
-[auth.email]
-enable_signup = false
-double_confirm_changes = false
-enable_confirmations = false
 
 [functions]
-[functions.enedis-auth]
-verify_jwt = false
+  [functions.enedis-auth]
+  verify_jwt = false
+
