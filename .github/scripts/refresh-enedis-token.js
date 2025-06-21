@@ -3,7 +3,8 @@
  * Ce script est exécuté par GitHub Actions toutes les 3 heures
  */
 
-const https = require('https');
+// Utiliser import au lieu de require pour la compatibilité ES modules
+import https from 'https';
 
 // Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xpxbxfuckljqdvkajlmx.supabase.co';
