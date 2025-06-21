@@ -4,7 +4,6 @@
  */
 
 const https = require('https');
-const http = require('http');
 
 // Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xpxbxfuckljqdvkajlmx.supabase.co';
@@ -18,22 +17,23 @@ if (!SUPABASE_ANON_KEY) {
 console.log('Starting Enedis token refresh process...');
 console.log(`Using Supabase URL: ${SUPABASE_URL}`);
 
-// Fonction pour appeler la fonction Edge Supabase
-async function callEdgeFunction(functionName, method = 'GET', body = null) {
+// Appeler la fonction Edge Supabase pour rafraîchir le token
+async function refreshEnedisToken() {
   return new Promise((resolve, reject) => {
-    const url = new URL(`${SUPABASE_URL}/functions/v1/${functionName}`);
+    const url = new URL(`${SUPABASE_URL}/functions/v1/enedis-token-refresh`);
+    url.searchParams.append('scheduled', 'true');
     
     const options = {
-      method: method,
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json'
       }
     };
     
-    const httpModule = url.protocol === 'https:' ? https : http;
+    console.log(`Calling Edge Function: ${url.toString().replace(/Bearer [^&]+/, 'Bearer ***')}`);
     
-    const req = httpModule.request(url, options, (res) => {
+    const req = https.request(url, options, (res) => {
       let data = '';
       
       res.on('data', (chunk) => {
@@ -44,51 +44,39 @@ async function callEdgeFunction(functionName, method = 'GET', body = null) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try {
             const jsonData = JSON.parse(data);
+            console.log('Token refresh successful:', {
+              success: jsonData.success,
+              expires_at: jsonData.expires_at
+            });
             resolve(jsonData);
           } catch (e) {
+            console.log('Response is not JSON:', data);
             resolve(data);
           }
         } else {
+          console.error(`HTTP Error: ${res.statusCode}`);
+          console.error('Response:', data);
           reject(new Error(`HTTP Error: ${res.statusCode} - ${data}`));
         }
       });
     });
     
     req.on('error', (error) => {
+      console.error('Request error:', error);
       reject(error);
     });
-    
-    if (body) {
-      req.write(JSON.stringify(body));
-    }
     
     req.end();
   });
 }
 
-// Fonction principale
-async function refreshEnedisToken() {
-  try {
-    console.log('Requesting new Enedis API token...');
-    
-    const tokenData = await callEdgeFunction('enedis-token-refresh', 'GET', {
-      scheduled: true
-    });
-    
-    if (!tokenData.success && !tokenData.access_token) {
-      throw new Error('Token refresh failed: ' + (tokenData.message || 'Unknown error'));
-    }
-    
-    console.log('Successfully refreshed Enedis API token');
-    console.log(`Token will expire at: ${tokenData.expires_at || 'Unknown'}`);
+// Exécuter la fonction
+refreshEnedisToken()
+  .then(() => {
     console.log('Token refresh completed successfully');
-    
-    return tokenData;
-  } catch (error) {
-    console.error('Error refreshing Enedis token:', error.message);
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('Error refreshing token:', error.message);
     process.exit(1);
-  }
-}
-
-// Exécuter la fonction principale
-refreshEnedisToken();
+  });
