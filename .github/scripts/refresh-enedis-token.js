@@ -75,12 +75,12 @@ async function refreshEnedisToken() {
       scheduled: true
     });
     
-    if (!tokenData.success) {
+    if (!tokenData.success && !tokenData.access_token) {
       throw new Error('Token refresh failed: ' + (tokenData.message || 'Unknown error'));
     }
     
     console.log('Successfully refreshed Enedis API token');
-    console.log(`Token will expire at: ${tokenData.expires_at}`);
+    console.log(`Token will expire at: ${tokenData.expires_at || 'Unknown'}`);
     console.log('Token refresh completed successfully');
     
     return tokenData;
