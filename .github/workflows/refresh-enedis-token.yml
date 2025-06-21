@@ -19,6 +19,10 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Create package.json for ESM
+        run: |
+          echo '{"type":"module"}' > .github/scripts/package.json
+
       - name: Request new Enedis API token
         run: node .github/scripts/refresh-enedis-token.js
         env:
