@@ -17,6 +17,7 @@ export default function LeafletMapView({ coordinates, onCoordinatesChange }: Lea
   const getMapUrl = () => {
     if (!coordinates) return '';
     
+    // Hardcoded API key for simplicity
     const apiKey = 'AIzaSyASRVXnrCTIr-5qmuNljc_LMnSeHOUAVXc';
     
     if (!apiKey) {
@@ -56,6 +57,7 @@ export default function LeafletMapView({ coordinates, onCoordinatesChange }: Lea
       setIsCaptureInProgress(true);
       setCaptureSuccess(false);
       
+      // Hardcoded API key for simplicity
       const apiKey = 'AIzaSyASRVXnrCTIr-5qmuNljc_LMnSeHOUAVXc';
       
       if (!apiKey) {
