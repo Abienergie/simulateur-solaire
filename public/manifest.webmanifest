@@ -5,8 +5,8 @@
   "theme_color": "#ffffff",
   "background_color": "#ffffff",
   "display": "standalone",
-  "start_url": "/simulateur-solaire/",
-  "scope": "/simulateur-solaire/",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "favicon.png",
