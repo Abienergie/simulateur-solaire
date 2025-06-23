@@ -38,7 +38,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/',
+  base: './', // Utiliser des chemins relatifs
   build: {
     outDir: 'dist',
     sourcemap: false,
