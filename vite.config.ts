@@ -14,17 +14,17 @@ export default defineConfig({
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
-        start_url: '/simulateur-solaire/',
-        scope: '/simulateur-solaire/',
+        start_url: '/',
+        scope: '/',
         icons: [
           {
-            src: 'favicon.png',
+            src: '/favicon.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: 'logo-simulateur.png',
+            src: '/logo-simulateur.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -39,7 +39,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/simulateur-solaire/',
+  base: '/',
   build: {
     outDir: 'dist',
     sourcemap: false,
