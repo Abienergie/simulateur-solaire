@@ -68,6 +68,7 @@ export default function PricingDrawer({
   // Battery type checks
   const isMyBattery = batterySelection?.type === 'mybattery';
   const isSmartBattery = batterySelection?.type === 'virtual';
+  const isPhysicalBattery = batterySelection?.type === 'physical';
   
   // Setup fees
   const myBatteryFee = isMyBattery ? (freeBatterySetup ? 0 : 179) : 0;
@@ -79,16 +80,21 @@ export default function PricingDrawer({
   const cashTotalPrice = financingMode === 'cash' 
     ? preTotalPrice - discount
     : 0;
-  const monthlyTotal = subscriptionPrice + (myLightPrice / 12);
-  // Calculate security deposit based only on subscription price, not including MyLight
-  const securityDeposit = subscriptionPrice * 2;
-
-  // Calculate monthly MyLight/Battery cost even in cash mode
+    
+  // Calculate monthly battery cost
   const monthlyBatteryCost = isMyBattery 
     ? installedPower * 1.055 // MyBattery: 1.055€/kWc/month
     : isSmartBattery && batterySelection?.virtualCapacity 
       ? myLightPrice / 12 // Smart Battery: based on capacity
-      : 0;
+      : isPhysicalBattery && batterySelection?.model?.monthlyPrice
+        ? batterySelection.model.monthlyPrice // Physical battery: monthly price from model
+        : 0;
+      
+  // Total monthly payment including battery
+  const monthlyTotal = subscriptionPrice + (myLightPrice / 12) + (isPhysicalBattery ? monthlyBatteryCost : 0);
+  
+  // Calculate security deposit based only on subscription price, not including MyLight
+  const securityDeposit = subscriptionPrice * 2;
 
   // Show subsidy only in surplus mode
   const showSubsidy = connectionType === 'surplus';
@@ -134,6 +140,12 @@ export default function PricingDrawer({
     localStorage.setItem('includeEcojoko', includeEcojoko.toString());
     localStorage.setItem('freeEcojoko', freeEcojoko.toString());
     
+    // Sauvegarder le coût mensuel total (abonnement + batterie)
+    localStorage.setItem('total_monthly_cost', monthlyTotal.toString());
+    
+    // Sauvegarder le coût mensuel de la batterie séparément
+    localStorage.setItem('battery_monthly_cost', monthlyBatteryCost.toString());
+    
     // Save promo code information
     if (discount > 0) {
       localStorage.setItem('promo_discount', discount.toString());
@@ -176,7 +188,9 @@ export default function PricingDrawer({
     freeSmartBatterySetup,
     validPromoCodes,
     includeEcojoko,
-    freeEcojoko
+    freeEcojoko,
+    monthlyTotal,
+    monthlyBatteryCost
   ]);
 
   // Load Ecojoko preference from localStorage
@@ -440,6 +454,13 @@ export default function PricingDrawer({
                       <span className="font-medium">{formatCurrency(subscriptionPrice)}</span>
                     </div>
 
+                    {isPhysicalBattery && batterySelection?.model?.monthlyPrice && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Batterie physique (mensuel)</span>
+                        <span className="font-medium">{formatCurrency(batterySelection.model.monthlyPrice)}</span>
+                      </div>
+                    )}
+
                     {myLightPrice > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">MyLight (mensuel)</span>
@@ -564,6 +585,14 @@ export default function PricingDrawer({
                       {freeMonths > 0 && (
                         <p className="text-xs text-green-600 mt-1">
                           Les {freeMonths} premier{freeMonths > 1 ? 's' : ''} mois sont offert{freeMonths > 1 ? 's' : ''} avec le code {validPromoCodes.find(c => c.subscription_effect === 'free_months')?.code}
+                        </p>
+                      )}
+                      
+                      {/* Affichage du pourcentage du revenu fiscal */}
+                      {localStorage.getItem('revenuFiscal') && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          Représente {((monthlyTotal * 12) / parseInt(localStorage.getItem('revenuFiscal') || '0', 10) * 100).toFixed(1)}% 
+                          de votre revenu fiscal annuel
                         </p>
                       )}
                     </div>

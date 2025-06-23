@@ -41,7 +41,7 @@ export default function ProjectionTable({ projection }: ProjectionTableProps) {
           backgroundColor: 'white',
           useCORS: true,
           scrollY: -window.scrollY,
-          scale: 6, // Increased from 5 to 6 for even better quality
+          scale: 5, // Revenir à une échelle de 5 pour un bon équilibre qualité/taille
           logging: false,
           allowTaint: true,
           foreignObjectRendering: false
@@ -49,7 +49,7 @@ export default function ProjectionTable({ projection }: ProjectionTableProps) {
         
         const dataUrl = canvas.toDataURL('image/png');
         localStorage.setItem('projection20ans_png', dataUrl);
-        console.log('Projection table captured automatically for PDF with scale 6');
+        console.log('Projection table captured automatically for PDF with scale 5');
       } catch (error) {
         console.error('Error capturing projection table:', error);
       }

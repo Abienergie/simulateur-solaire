@@ -25,7 +25,7 @@ const loadGoogleMapsScript = (): Promise<void> => {
     isScriptLoading = true;
     
     // Get API key from environment variables
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    const apiKey = 'AIzaSyASRVXnrCTIr-5qmuNljc_LMnSeHOUAVXc';
     
     if (!apiKey) {
       console.error('Google Maps API key is not defined in environment variables');
@@ -35,18 +35,22 @@ const loadGoogleMapsScript = (): Promise<void> => {
       return;
     }
     
+    console.log('Loading Google Maps with API key:', apiKey ? `${apiKey.substring(0, 5)}...` : 'undefined');
+    
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
     script.async = true;
     script.defer = true;
     
     script.onload = () => {
+      console.log('Google Maps script loaded successfully');
       isScriptLoading = false;
       scriptLoadPromise = null;
       resolve();
     };
     
-    script.onerror = () => {
+    script.onerror = (error) => {
+      console.error('Failed to load Google Maps script:', error);
       isScriptLoading = false;
       scriptLoadPromise = null;
       reject(new Error("Failed to load Google Maps API"));
@@ -153,10 +157,11 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
         }
 
         setIsLoading(false);
+        setError(null);
       } catch (err) {
         console.error('Error initializing map:', err);
         if (isMounted) {
-          setError('Error initializing map');
+          setError('Error initializing map. Please check your Google Maps API key configuration.');
           setIsLoading(false);
         }
       }
@@ -170,7 +175,6 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
         marker.setMap(null);
       }
       if (map) {
-        // Clean up event listeners
         google.maps.event.clearInstanceListeners(map);
       }
     };
@@ -201,13 +205,11 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
               lon: position.lng()
             });
             
-            // Generate and save static map image when marker is moved
             generateStaticMapImage(position.lat(), position.lng());
           }
         });
       }
       
-      // Generate static map image when coordinates change
       generateStaticMapImage(coordinates.lat, coordinates.lon);
     }
   }, [coordinates, map, onCoordinatesChange]);
@@ -250,29 +252,23 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
           onCoordinatesChange(coordinates);
         }
         
-        // Generate static map image when map is reset
         generateStaticMapImage(coordinates.lat, coordinates.lon);
       }
     }
   };
   
-  // Function to generate and save static map image with improved error handling
   const generateStaticMapImage = (lat: number, lng: number) => {
     try {
-      // Get API key from environment variables
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      const apiKey = 'AIzaSyASRVXnrCTIr-5qmuNljc_LMnSeHOUAVXc';
       
       if (!apiKey) {
         throw new Error('Google Maps API key is missing');
       }
       
-      // Create static map URL
       const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=20&size=600x400&maptype=satellite&markers=color:red%7C${lat},${lng}&key=${apiKey}`;
       
-      // Reset any previous errors
       setStaticMapError(null);
       
-      // Create an image to test if the URL is valid
       const img = new Image();
       
       img.onload = () => {
@@ -281,14 +277,12 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
         setStaticMapError(null);
       };
       
-      img.onerror = (e) => {
-        console.error('Failed to load static map image:', e);
+      img.onerror = () => {
         setStaticMapError('Failed to load satellite image. Please verify your Google Maps API key configuration.');
         localStorage.removeItem('satellite_image_url');
         setMapImageUrl(null);
       };
       
-      // Set crossOrigin to anonymous to handle CORS
       img.crossOrigin = 'anonymous';
       img.src = staticMapUrl;
       
@@ -302,7 +296,7 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
 
   const captureMap = async () => {
     if (!coordinates) {
-      setError("Impossible de capturer la carte. Coordonnées non disponibles.");
+      setError("Cannot capture map. Coordinates not available.");
       return;
     }
 
@@ -310,16 +304,14 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
       setIsCaptureInProgress(true);
       setCaptureSuccess(false);
       
-      // Créer une URL pour la carte statique
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      const apiKey = 'AIzaSyASRVXnrCTIr-5qmuNljc_LMnSeHOUAVXc';
       
       if (!apiKey) {
-        throw new Error('Clé API Google Maps manquante');
+        throw new Error('Google Maps API key is missing');
       }
       
       const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${coordinates.lat},${coordinates.lon}&zoom=20&size=600x400&maptype=satellite&markers=color:red%7C${coordinates.lat},${coordinates.lon}&key=${apiKey}`;
       
-      // Create an image to test if the URL is valid
       const img = new Image();
       img.crossOrigin = 'anonymous';
       
@@ -332,7 +324,6 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
       
       await loadPromise;
       
-      // If image loads successfully
       localStorage.setItem('satellite_image_url', staticMapUrl);
       setMapImageUrl(staticMapUrl);
       setStaticMapError(null);
@@ -341,9 +332,9 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
       setTimeout(() => setCaptureSuccess(false), 3000);
       
     } catch (err) {
-      console.error('Erreur lors de la capture de la carte:', err);
+      console.error('Error capturing map:', err);
       setIsCaptureInProgress(false);
-      setStaticMapError("Impossible de capturer la carte satellite. Vérifiez votre clé API Google Maps.");
+      setStaticMapError("Failed to capture satellite image. Please verify your Google Maps API key configuration.");
       localStorage.removeItem('satellite_image_url');
       setMapImageUrl(null);
     }
@@ -405,13 +396,13 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
               </div>
               <p className="text-red-600">{error}</p>
               <p className="text-sm text-gray-600 mt-2">
-                Vérifiez que la clé API Google Maps est correctement configurée et que les APIs nécessaires sont activées.
+                Please verify that your Google Maps API key is correctly configured and the necessary APIs are enabled.
               </p>
               <button
                 onClick={() => window.location.reload()}
                 className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                Réessayer
+                Retry
               </button>
             </div>
           </div>
@@ -426,7 +417,7 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
           <div className="absolute top-4 left-4 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-md z-10">
             <p className="text-sm text-gray-700 flex items-center gap-1">
               <MapPin className="h-4 w-4 text-blue-500" />
-              Cliquez pour positionner votre maison
+              Click to position your house
             </p>
           </div>
         )}
@@ -440,14 +431,14 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
         {captureSuccess && (
           <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow-md z-[1000] flex items-center gap-2">
             <Camera className="h-4 w-4" />
-            <span>Image capturée avec succès pour le rapport PDF</span>
+            <span>Image captured successfully for PDF report</span>
           </div>
         )}
         
         {coordinates && !error && (
           <div className="absolute bottom-4 left-4 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow-md z-10">
             <p className="text-xs text-gray-700">
-              Coordonnées: {coordinates.lat.toFixed(6)}, {coordinates.lon.toFixed(6)}
+              Coordinates: {coordinates.lat.toFixed(6)}, {coordinates.lon.toFixed(6)}
             </p>
           </div>
         )}

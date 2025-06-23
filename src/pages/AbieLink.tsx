@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Link as LinkIcon, Lock, Info, Search, ExternalLink, AlertCircle, Download, Loader2, CheckCircle } from 'lucide-react';
+import { Link as LinkIcon, Lock, Info, Search, ExternalLink, AlertCircle, Download, Loader2, CheckCircle, RefreshCw, BarChart2, Calendar, User, FileText } from 'lucide-react';
 import { useEnedisData } from '../hooks/useEnedisData';
-import ConsumptionChart from '../components/ConsumptionChart';
+import EnhancedConsumptionChart from '../components/EnhancedConsumptionChart';
+import DailyConsumptionPatterns from '../components/DailyConsumptionPatterns';
+import EnedisInfoDisplay from '../components/EnedisInfoDisplay';
 import { useLocation } from 'react-router-dom';
-import { enedisApi } from '../utils/api/enedisApi';
 
 const AbieLink: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [rawData, setRawData] = useState<string | null>(null);
-  const [pdlInput, setPdlInput] = useState('');
+  const [manualPdl, setManualPdl] = useState('');
+  const [activeView, setActiveView] = useState<'overview' | 'patterns' | 'info'>('overview');
   const location = useLocation();
-  const { consumptionData, isConnected, fetchConsumptionData, testConnection, resetData } = useEnedisData();
+  const { 
+    consumptionData, 
+    isConnected, 
+    fetchConsumptionData, 
+    testConnection, 
+    resetData, 
+    additionalInfo 
+  } = useEnedisData();
 
   useEffect(() => {
     // Vérifier les paramètres d'URL pour les messages de succès/erreur
@@ -20,32 +29,26 @@ const AbieLink: React.FC = () => {
       if (location.state.success) {
         setSuccess(location.state.message || 'Connexion réussie');
         
-        // Si on a un PDL, essayer de récupérer les données
+        // Si on a un PDL, l'afficher dans le message de succès et le stocker
         if (location.state.pdl) {
           console.log('PDL reçu dans les paramètres d\'URL:', location.state.pdl);
-          fetchConsumptionData(location.state.pdl).catch(err => {
-            console.error('Erreur lors de la récupération des données:', err);
-            setError(err instanceof Error ? err.message : 'Erreur lors de la récupération des données');
-          });
-        } else {
-          // Sinon, utiliser le PDL stocké dans le localStorage
-          const storedPdl = localStorage.getItem('enedis_usage_point_id');
-          if (storedPdl) {
-            console.log('Utilisation du PDL stocké:', storedPdl);
-            fetchConsumptionData(storedPdl).catch(err => {
-              console.error('Erreur lors de la récupération des données:', err);
-              setError(err instanceof Error ? err.message : 'Erreur lors de la récupération des données');
-            });
-          } else {
-            console.log('Aucun PDL disponible');
-            setError('Aucun point de livraison (PDL) disponible');
-          }
+          setSuccess(`Connexion réussie sur le PDL n°${location.state.pdl}`);
+          localStorage.setItem('enedis_usage_point_id', location.state.pdl);
+          setManualPdl(location.state.pdl);
         }
       } else if (location.state.error) {
         setError(location.state.error);
       }
     }
-  }, [location, fetchConsumptionData]);
+  }, [location]);
+
+  // Récupérer le PDL du localStorage au chargement
+  useEffect(() => {
+    const storedPdl = localStorage.getItem('enedis_usage_point_id');
+    if (storedPdl) {
+      setManualPdl(storedPdl);
+    }
+  }, []);
 
   const handleEnedisClick = () => {
     setIsLoading(true);
@@ -53,42 +56,16 @@ const AbieLink: React.FC = () => {
     
     try {
       // URL directe vers l'authentification Enedis
-      const authUrl = "https://mon-compte-particulier.enedis.fr/dataconnect/v1/oauth2/authorize?client_id=Y_LuB7HsQW3JWYudw7HRmN28FN8a&duration=P1Y&response_type=code&state=AbieLink1";
+      const authUrl = "https://mon-compte-particulier.enedis.fr/dataconnect/v1/oauth2/authorize?client_id=Y_LuB7HsQW3JWYudw7HRmN28FN8a&duration=P1Y&response_type=code&state=AbieLink1&scope=fr_be_cons_detail_load_curve+fr_be_cons_daily_consumption+fr_be_cons_max_power+fr_be_prod_daily_production+fr_be_identity+fr_be_address+fr_be_contact";
+      
+      // Ouvrir dans un nouvel onglet pour éviter les problèmes de redirection
       window.open(authUrl, '_blank');
       
       setSuccess('Redirection vers Enedis...');
+      setIsLoading(false);
     } catch (err) {
       setError('Erreur lors de la redirection');
       console.error('Erreur:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleTestPDL = async () => {
-    if (!pdlInput || pdlInput.length !== 14) {
-      setError('Veuillez saisir un numéro PDL valide (14 chiffres)');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
-    
-    try {
-      // Tester l'accès au PDL
-      const hasAccess = await testConnection(pdlInput);
-      
-      if (hasAccess) {
-        setSuccess(`Accès confirmé au PDL ${pdlInput}`);
-        // Récupérer les données
-        await fetchConsumptionData(pdlInput);
-      } else {
-        setError(`Impossible d'accéder au PDL ${pdlInput}. Vérifiez que vous avez donné votre consentement pour ce point de livraison.`);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la vérification du PDL');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -99,20 +76,50 @@ const AbieLink: React.FC = () => {
     setRawData(null);
     
     try {
-      const pdl = localStorage.getItem('enedis_usage_point_id');
+      // Utiliser le PDL saisi manuellement ou celui du localStorage
+      const pdl = manualPdl || localStorage.getItem('enedis_usage_point_id');
+      
       if (!pdl) {
-        throw new Error('Aucun PDL disponible. Veuillez d\'abord vous connecter à Enedis.');
+        throw new Error('Aucun PDL disponible. Veuillez saisir un PDL ou vous connecter à Enedis.');
       }
       
+      // Tester d'abord si le PDL est accessible
+      const isAccessible = await testConnection(pdl);
+      
+      if (!isAccessible) {
+        throw new Error(`Le PDL ${pdl} n'est pas accessible. Veuillez vérifier le numéro ou vous connecter à Enedis.`);
+      }
+      
+      // Si le PDL est accessible, récupérer les données
       const data = await fetchConsumptionData(pdl);
       
-      // Afficher les données brutes
-      setRawData(JSON.stringify(data, null, 2));
+      // Stocker la réponse brute pour le débogage
+      if (data.rawResponse) {
+        setRawData(JSON.stringify(data.rawResponse, null, 2));
+        // Sauvegarder dans le localStorage pour référence
+        localStorage.setItem('enedis_raw_response', JSON.stringify(data.rawResponse));
+      }
+      
       setSuccess('Données récupérées avec succès');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la récupération des données');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePdlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Accepter uniquement les chiffres et limiter à 14 caractères
+    const value = e.target.value.replace(/\D/g, '').slice(0, 14);
+    setManualPdl(value);
+  };
+
+  const handleSavePdl = () => {
+    if (manualPdl.length === 14) {
+      localStorage.setItem('enedis_usage_point_id', manualPdl);
+      setSuccess(`PDL n°${manualPdl} enregistré`);
+    } else {
+      setError('Le PDL doit comporter 14 chiffres');
     }
   };
 
@@ -173,7 +180,62 @@ const AbieLink: React.FC = () => {
 
       {consumptionData ? (
         <div className="space-y-6">
-          <ConsumptionChart data={consumptionData} onReset={resetData} />
+          {/* Onglets pour basculer entre les vues */}
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveView('overview')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeView === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <BarChart2 className="h-4 w-4" />
+                  <span>Vue d'ensemble</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveView('patterns')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeView === 'patterns'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>Habitudes de consommation</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveView('info')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeView === 'info'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  <span>Informations PDL</span>
+                </div>
+              </button>
+            </nav>
+          </div>
+          
+          {activeView === 'overview' && (
+            <EnhancedConsumptionChart data={consumptionData} onReset={resetData} />
+          )}
+          
+          {activeView === 'patterns' && (
+            <DailyConsumptionPatterns data={consumptionData} />
+          )}
+          
+          {activeView === 'info' && (
+            <EnedisInfoDisplay additionalInfo={additionalInfo} />
+          )}
           
           <div className="flex justify-center space-x-4">
             <button
@@ -187,7 +249,10 @@ const AbieLink: React.FC = () => {
                   Chargement...
                 </span>
               ) : (
-                'Récupérer vos données'
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Actualiser les données
+                </span>
               )}
             </button>
             
@@ -257,62 +322,76 @@ const AbieLink: React.FC = () => {
             </h2>
 
             <div className="space-y-6">
+              {/* Saisie manuelle du PDL */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 className="font-medium text-blue-900 mb-2">Étape 1: Authentification Enedis</h3>
+                <h3 className="font-medium text-blue-900 mb-2">Point de Livraison (PDL)</h3>
                 <p className="text-sm text-blue-800 mb-4">
+                  Saisissez votre numéro de Point de Livraison (PDL) à 14 chiffres. 
+                  Vous le trouverez sur votre facture d'électricité ou sur votre compteur Linky.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-grow">
+                    <input
+                      type="text"
+                      value={manualPdl}
+                      onChange={handlePdlChange}
+                      placeholder="14 chiffres"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      maxLength={14}
+                    />
+                    <p className="mt-1 text-xs text-blue-600">
+                      {manualPdl.length}/14 chiffres
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSavePdl}
+                      disabled={manualPdl.length !== 14}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Enregistrer
+                    </button>
+                    <button
+                      onClick={handleFetchData}
+                      disabled={isLoading || manualPdl.length !== 14}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Chargement...
+                        </span>
+                      ) : (
+                        'Récupérer les données'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-gray-600 mb-4">- OU -</p>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h3 className="font-medium text-green-900 mb-2">Connexion automatique</h3>
+                <p className="text-sm text-green-800 mb-4">
                   Connectez-vous à votre compte Enedis pour donner votre consentement à l'accès à vos données.
-                  Cette étape est nécessaire pour autoriser l'application à accéder à vos données de consommation.
+                  Cette méthode récupère automatiquement votre PDL et vous donne accès à toutes vos données de consommation.
                 </p>
                 
                 <div className="flex justify-center">
                   <button
                     onClick={handleEnedisClick}
                     disabled={isLoading}
-                    className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
                   >
                     <ExternalLink className="h-5 w-5 mr-2" />
                     Se connecter à Enedis
                   </button>
                 </div>
               </div>
-
-              {isConnected && (
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                  <h3 className="font-medium text-amber-900 mb-2">Étape 2: Accéder à un point de livraison (PDL)</h3>
-                  <p className="text-sm text-amber-800 mb-4">
-                    Saisissez votre numéro de PDL pour accéder à vos données de consommation.
-                    Vous devez avoir donné votre consentement pour ce PDL lors de l'étape 1.
-                  </p>
-                  
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={pdlInput}
-                      onChange={(e) => setPdlInput(e.target.value.replace(/\D/g, '').slice(0, 14))}
-                      placeholder="Numéro PDL (14 chiffres)"
-                      className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      maxLength={14}
-                    />
-                    <button
-                      onClick={handleTestPDL}
-                      disabled={isLoading || pdlInput.length !== 14}
-                      className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50"
-                    >
-                      {isLoading ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Vérification...
-                        </span>
-                      ) : (
-                        'Vérifier l\'accès'
-                      )}
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-amber-700">
-                    Le numéro PDL (Point De Livraison) est un identifiant à 14 chiffres qui se trouve sur votre facture d'électricité.
-                  </p>
-                </div>
-              )}
 
               {isLoading && (
                 <div className="flex justify-center mt-4">

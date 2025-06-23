@@ -5,6 +5,7 @@ import { PHYSICAL_BATTERIES, VIRTUAL_BATTERIES } from '../utils/constants/batter
 import { formatCurrency } from '../utils/formatters';
 import { useBatteries } from '../hooks/useBatteries';
 import { useFinancialSettings } from '../contexts/FinancialSettingsContext';
+import { getSubscriptionPrice } from '../utils/calculations/priceCalculator';
 import SmartBatteryModal from './SmartBatteryModal';
 
 interface BatterySelectorProps {
@@ -38,6 +39,9 @@ export default function BatterySelector({
     physicalBattery: true,
     myBattery: true,
     smartBattery: true
+  });
+  const [revenuFiscal, setRevenuFiscal] = useState(() => {
+    return localStorage.getItem('revenuFiscal') || '';
   });
   const prevConn = useRef<string>();
   const prevFormula = useRef<string>();
@@ -187,6 +191,33 @@ export default function BatterySelector({
     }
   };
 
+  const handleRevenuFiscalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setRevenuFiscal(value);
+    
+    if (value) {
+      localStorage.setItem('revenuFiscal', value);
+    } else {
+      localStorage.removeItem('revenuFiscal');
+    }
+  };
+
+  // Vérifier l'éligibilité financière pour la batterie physique
+  const checkBatteryEligibility = (battery: PhysicalBattery) => {
+    if (batteryFormula !== 'abonnement' || !revenuFiscal) return true;
+    
+    const revenuAnnuel = parseInt(revenuFiscal, 10);
+    if (revenuAnnuel <= 0) return true;
+    
+    // Calculer le coût mensuel total (abonnement solaire + batterie)
+    const baseSubscriptionPrice = getSubscriptionPrice(installedPower, subscriptionDuration);
+    const totalMonthlyPrice = baseSubscriptionPrice + battery.monthlyPrice;
+    const annualCost = totalMonthlyPrice * 12;
+    
+    // Vérifier que le coût annuel ne dépasse pas 7% du revenu fiscal
+    return (annualCost / revenuAnnuel * 100) <= 7;
+  };
+
   const monthlyMyBatteryCost = installedPower * 1.055;
 
   if (connectionType === 'total_sale') {
@@ -290,6 +321,29 @@ export default function BatterySelector({
           {value.type === 'physical' && (
             <div className="space-y-4">
               <h4 className="font-medium text-gray-700">Choisissez votre batterie</h4>
+              
+              {/* Champ de revenu fiscal pour batterie physique en mode abonnement */}
+              {batteryFormula === 'abonnement' && (
+                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                  <h5 className="font-medium text-blue-800 mb-2">Centrale solaire + Batterie</h5>
+                  <p className="text-sm text-blue-700 mb-3">
+                    Pour un abonnement avec batterie physique, l'annualité totale ne doit pas dépasser 7% de votre revenu fiscal de référence.
+                  </p>
+                  <div className="flex flex-col space-y-2">
+                    <label className="text-sm font-medium text-blue-700">
+                      Revenu fiscal de référence
+                    </label>
+                    <input
+                      type="text"
+                      value={revenuFiscal}
+                      onChange={handleRevenuFiscalChange}
+                      placeholder="Montant en euros"
+                      className="w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+              
               {batteriesLoading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
@@ -325,31 +379,49 @@ export default function BatterySelector({
                       </div>
                     ))
                   ) : (
-                    filteredPhysicalBatteries.map((battery) => (
-                      <div
-                        key={battery.id}
-                        onClick={() => handlePhysicalBatterySelect(battery)}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                          value.model?.id === battery.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h5 className="font-medium">{battery.model}</h5>
-                            <p className="text-sm text-gray-600">{battery.capacity} kWh</p>
+                    filteredPhysicalBatteries.map((battery) => {
+                      const isEligible = checkBatteryEligibility(battery);
+                      
+                      return (
+                        <div
+                          key={battery.id}
+                          onClick={() => isEligible && handlePhysicalBatterySelect(battery)}
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                            !isEligible 
+                              ? 'border-gray-200 bg-gray-100 opacity-60 cursor-not-allowed'
+                              : value.model?.id === battery.id
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h5 className="font-medium">{battery.model}</h5>
+                              <p className="text-sm text-gray-600">{battery.capacity} kWh</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-blue-600">{formatCurrency(battery.monthlyPrice)}/mois</p>
+                              <p className="text-sm text-gray-600">{battery.duration} ans</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium text-blue-600">{formatCurrency(battery.monthlyPrice)}/mois</p>
-                            <p className="text-sm text-gray-600">{battery.duration} ans</p>
-                          </div>
+                          <p className="text-sm text-green-600">
+                            +{battery.autoconsumptionIncrease}% d'autoconsommation
+                          </p>
+                          
+                          {!isEligible && revenuFiscal && (
+                            <div className="mt-2 bg-amber-50 p-2 rounded text-xs text-amber-700">
+                              Revenu fiscal insuffisant pour cette batterie
+                            </div>
+                          )}
+                          
+                          {batteryFormula === 'abonnement' && (
+                            <div className="mt-2 text-xs text-gray-600">
+                              Coût total mensuel: {formatCurrency(getSubscriptionPrice(installedPower, subscriptionDuration) + battery.monthlyPrice)}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-green-600">
-                          +{battery.autoconsumptionIncrease}% d'autoconsommation
-                        </p>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}

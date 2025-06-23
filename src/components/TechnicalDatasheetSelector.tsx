@@ -116,6 +116,13 @@ export default function TechnicalDatasheetSelector({
               url: 'https://xpxbxfuckljqdvkajlmx.supabase.co/storage/v1/object/public/material//RENUSOL_bac-lestes.pdf',
               category: 'other',
               createdAt: new Date().toISOString()
+            },
+            {
+              id: 'smartbattery-plaquette',
+              name: 'SmartBattery',
+              url: 'https://xpxbxfuckljqdvkajlmx.supabase.co/storage/v1/object/public/material//OFFRE-MSB-PLAQUETTE.pdf',
+              category: 'other',
+              createdAt: new Date().toISOString()
             }
           ];
           

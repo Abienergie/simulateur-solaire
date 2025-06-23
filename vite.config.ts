@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // Changé de 'autoUpdate' à 'prompt' pour éviter l'enregistrement automatique
       manifest: {
         name: 'Simulateur Solaire',
         short_name: 'Simulateur',
@@ -14,25 +14,32 @@ export default defineConfig({
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
-        start_url: '/',
+        start_url: '/simulateur-solaire/',
+        scope: '/simulateur-solaire/',
         icons: [
           {
-            src: '/logo-simulateur.png',
+            src: 'favicon.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: '/logo-simulateur.png',
+            src: 'logo-simulateur.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
           }
         ]
+      },
+      // Désactiver complètement l'enregistrement automatique du service worker
+      injectRegister: false,
+      // Désactiver le service worker en développement
+      devOptions: {
+        enabled: false
       }
     })
   ],
-  base: '/',
+  base: '/simulateur-solaire/',
   build: {
     outDir: 'dist',
     sourcemap: false,
@@ -49,8 +56,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false,
-    host: true
+    host: true,
+    // Désactiver complètement le HMR pour éviter les rechargements en boucle
+    hmr: false
   },
   envPrefix: 'VITE_'
 });
-

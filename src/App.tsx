@@ -36,7 +36,6 @@ export default function App() {
         <FinancialSettingsProvider>
           <div className="min-h-screen flex flex-col">
             <Header />
-
             <Layout>
               <Routes>
                 <Route path="/" element={<SolarForm />} />

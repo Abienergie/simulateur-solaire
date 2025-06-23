@@ -66,6 +66,9 @@ export default function EligibilityForm() {
     quoteUrl?: string;
     pdfUrl?: string;
   } | null>(null);
+  const [revenuFiscal, setRevenuFiscal] = useState(() => {
+    return localStorage.getItem('revenuFiscal') || '';
+  });
 
   const validateClientInfo = useCallback(() => {
     const errors = [];
@@ -93,9 +96,60 @@ export default function EligibilityForm() {
     validateClientInfo();
   }, [clientInfo, address, validateClientInfo]);
 
+  // Vérifier l'éligibilité financière
+  useEffect(() => {
+    if (parameters.financingMode === 'subscription' && revenuFiscal) {
+      const revenuAnnuel = parseInt(revenuFiscal, 10);
+      if (revenuAnnuel > 0) {
+        // Récupérer le coût mensuel total (abonnement + batterie)
+        const totalMonthlyCost = parseFloat(localStorage.getItem('total_monthly_cost') || '0');
+        const annualCost = totalMonthlyCost * 12;
+        
+        // Utiliser le seuil de 7% si une batterie est sélectionnée, sinon 4%
+        const maxRatioPercentage = parameters.batterySelection?.type ? 7 : 4;
+        const isEligible = (annualCost / revenuAnnuel * 100) <= maxRatioPercentage;
+        
+        if (!isEligible) {
+          setError(`Votre revenu fiscal ne permet pas de souscrire à cet abonnement. L'annualité représente plus de ${maxRatioPercentage}% de votre revenu fiscal.`);
+        } else {
+          setError(null);
+        }
+      }
+    }
+  }, [parameters.financingMode, parameters.batterySelection, revenuFiscal]);
+
   const handlePDLChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 14);
     setPdl(value);
+  };
+
+  const handleRevenuFiscalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setRevenuFiscal(value);
+    
+    if (value) {
+      localStorage.setItem('revenuFiscal', value);
+      const revenuAnnuel = parseInt(value, 10);
+      
+      // Vérifier l'éligibilité financière
+      if (parameters.financingMode === 'subscription' && revenuAnnuel > 0) {
+        // Récupérer le coût mensuel total (abonnement + batterie)
+        const totalMonthlyCost = parseFloat(localStorage.getItem('total_monthly_cost') || '0');
+        const annualCost = totalMonthlyCost * 12;
+        
+        // Utiliser le seuil de 7% si une batterie est sélectionnée, sinon 4%
+        const maxRatioPercentage = parameters.batterySelection?.type ? 7 : 4;
+        const isEligible = (annualCost / revenuAnnuel * 100) <= maxRatioPercentage;
+        
+        if (!isEligible) {
+          setError(`Votre revenu fiscal ne permet pas de souscrire à cet abonnement. L'annualité représente plus de ${maxRatioPercentage}% de votre revenu fiscal.`);
+        } else {
+          setError(null);
+        }
+      }
+    } else {
+      localStorage.removeItem('revenuFiscal');
+    }
   };
 
   const handleCommercialIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,6 +215,25 @@ export default function EligibilityForm() {
         return;
       }
       
+      // Vérifier l'éligibilité financière pour l'abonnement
+      if (parameters.financingMode === 'subscription' && revenuFiscal) {
+        const revenuAnnuel = parseInt(revenuFiscal, 10);
+        if (revenuAnnuel > 0) {
+          // Récupérer le coût mensuel total (abonnement + batterie)
+          const totalMonthlyCost = parseFloat(localStorage.getItem('total_monthly_cost') || '0');
+          const annualCost = totalMonthlyCost * 12;
+          
+          // Utiliser le seuil de 7% si une batterie est sélectionnée, sinon 4%
+          const maxRatioPercentage = parameters.batterySelection?.type ? 7 : 4;
+          const isEligible = (annualCost / revenuAnnuel * 100) <= maxRatioPercentage;
+          
+          if (!isEligible) {
+            setError(`Votre revenu fiscal ne permet pas de souscrire à cet abonnement. L'annualité représente plus de ${maxRatioPercentage}% de votre revenu fiscal.`);
+            return;
+          }
+        }
+      }
+      
       setShowSuccessModal(true);
       setError(null);
     }, 100);
@@ -189,6 +262,26 @@ export default function EligibilityForm() {
         setError("Veuillez saisir l'ID du chargé d'affaire.");
         setIsProcessing(false);
         return;
+      }
+      
+      // Vérifier l'éligibilité financière pour l'abonnement
+      if (parameters.financingMode === 'subscription' && revenuFiscal) {
+        const revenuAnnuel = parseInt(revenuFiscal, 10);
+        if (revenuAnnuel > 0) {
+          // Récupérer le coût mensuel total (abonnement + batterie)
+          const totalMonthlyCost = parseFloat(localStorage.getItem('total_monthly_cost') || '0');
+          const annualCost = totalMonthlyCost * 12;
+          
+          // Utiliser le seuil de 7% si une batterie est sélectionnée, sinon 4%
+          const maxRatioPercentage = parameters.batterySelection?.type ? 7 : 4;
+          const isEligible = (annualCost / revenuAnnuel * 100) <= maxRatioPercentage;
+          
+          if (!isEligible) {
+            setError(`Votre revenu fiscal ne permet pas de souscrire à cet abonnement. L'annualité représente plus de ${maxRatioPercentage}% de votre revenu fiscal.`);
+            setIsProcessing(false);
+            return;
+          }
+        }
       }
 
       setProcessingStep('Préparation des données...');
@@ -242,6 +335,9 @@ export default function EligibilityForm() {
       window.open(pdfUrl, '_blank');
     }
   };
+
+  // Calculer le seuil d'éligibilité en fonction de la présence d'une batterie
+  const eligibilityThreshold = parameters.batterySelection?.type ? 7 : 4;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
@@ -337,7 +433,7 @@ export default function EligibilityForm() {
               <AlertCircle className="h-4 w-4 text-gray-400 cursor-help" />
               <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-sm rounded-lg py-2 px-3 w-72 bottom-full left-1/2 -translate-x-1/2 mb-2">
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                L'identifiant du chargé d'affaire qui gère ce dossier. Cet ID est nécessaire pour associer le client au bon chargé d'affaire dans iColl.
+                L'identifiant du chargé d\'affaire qui gère ce dossier. Cet ID est nécessaire pour associer le client au bon chargé d'affaire dans iColl.
               </div>
             </div>
           </label>
@@ -354,6 +450,32 @@ export default function EligibilityForm() {
             />
           </div>
         </div>
+
+        {parameters.financingMode === 'subscription' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Revenu fiscal de référence
+              <div className="relative inline-block ml-2 group">
+                <AlertCircle className="h-4 w-4 text-gray-400 cursor-help" />
+                <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-sm rounded-lg py-2 px-3 w-72 bottom-full left-1/2 -translate-x-1/2 mb-2">
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+                  Le revenu fiscal de référence se trouve sur votre dernier avis d'imposition. Pour un abonnement avec batterie, l\'annualité ne doit pas dépasser 7% de ce revenu.
+                </div>
+              </div>
+            </label>
+            <input
+              type="text"
+              value={revenuFiscal}
+              onChange={handleRevenuFiscalChange}
+              placeholder="Montant en euros"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-sm text-blue-600">
+              Pour un abonnement {parameters.batterySelection?.type ? 'avec batterie' : 'sans batterie'}, 
+              l'annualité ne doit pas dépasser {eligibilityThreshold}% de votre revenu fiscal.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -492,9 +614,9 @@ export default function EligibilityForm() {
         <div className="flex justify-center mt-8">
           <button
             onClick={handleSubmit}
-            disabled={validationErrors.length > 0 || !commercialId}
+            disabled={validationErrors.length > 0 || !commercialId || (parameters.financingMode === 'subscription' && error !== null)}
             className={`px-6 py-3 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${
-              validationErrors.length > 0 || !commercialId
+              validationErrors.length > 0 || !commercialId || (parameters.financingMode === 'subscription' && error !== null)
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}

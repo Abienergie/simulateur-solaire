@@ -7,12 +7,13 @@ class EnedisAPI {
   private readonly config = {
     clientId: 'Y_LuB7HsQW3JWYudw7HRmN28FN8a',
     clientSecret: 'Pb9H1p8zJ4IfX0xca5c7lficGo4a',
-    // URL de redirection modifiée pour pointer vers l'environnement de production
+    // URL de redirection pour l'environnement de production
     redirectUri: 'https://abienergie.github.io/simulateur-solaire/#/oauth/callback',
     authUrl: 'https://mon-compte-particulier.enedis.fr/dataconnect/v1/oauth2/authorize',
     tokenUrl: 'https://gw.ext.prod.api.enedis.fr/oauth2/v3/token',
     apiUrl: 'https://gw.ext.prod.api.enedis.fr/metering_data_dc/v5',
-    scope: 'fr_be_cons_detail_load_curve'
+    // Tous les scopes demandés
+    scope: 'fr_be_cons_detail_load_curve fr_be_cons_daily_consumption fr_be_cons_max_power fr_be_prod_daily_production fr_be_identity fr_be_address fr_be_contact'
   };
 
   private constructor() {
@@ -34,7 +35,8 @@ class EnedisAPI {
       response_type: 'code',
       client_id: this.config.clientId,
       duration: 'P1Y',
-      state: 'AbieLink1'
+      state: 'AbieLink1',
+      scope: this.config.scope
     });
 
     return `${this.config.authUrl}?${params.toString()}`;
@@ -105,12 +107,17 @@ class EnedisAPI {
       this.accessToken = data.access_token;
       localStorage.setItem('enedis_access_token', data.access_token);
       
-      // Sauvegarder la date d'expiration (3h30 = 12600 secondes)
-      const expiresAt = new Date();
-      expiresAt.setSeconds(expiresAt.getSeconds() + (data.expires_in || 12600));
-      localStorage.setItem('enedis_token_expires', expiresAt.toISOString());
+      // Sauvegarder la date d'expiration
+      if (data.expires_at) {
+        localStorage.setItem('enedis_token_expires', data.expires_at);
+      } else {
+        // Fallback: 3h30 = 12600 secondes
+        const expiresAt = new Date();
+        expiresAt.setSeconds(expiresAt.getSeconds() + (data.expires_in || 12600));
+        localStorage.setItem('enedis_token_expires', expiresAt.toISOString());
+      }
       
-      console.log('Token API obtenu avec succès, valable jusqu\'à', expiresAt.toLocaleString());
+      console.log('Token API obtenu avec succès, valable jusqu\'à', data.expires_at || 'inconnu');
       
       return data.access_token;
     } catch (error) {
@@ -238,19 +245,79 @@ class EnedisAPI {
       // Sauvegarder la réponse brute dans le localStorage pour le débogage
       localStorage.setItem('enedis_raw_response', JSON.stringify(responseData));
       
+      // Sauvegarder les informations supplémentaires dans le localStorage
+      if (responseData.additionalInfo) {
+        localStorage.setItem('enedis_additional_info', JSON.stringify(responseData.additionalInfo));
+      }
+      
       if (!responseData?.meter_reading?.interval_reading) {
         console.error('Format de données invalide:', responseData);
         throw new Error('Format de données invalide');
       }
       
       const formattedData = this.formatConsumptionData(responseData, prm);
+      
       return {
         rawResponse: responseData,
+        additionalInfo: responseData.additionalInfo,
         ...formattedData
       };
       
     } catch (error) {
       console.error('Erreur lors de la récupération des données:', error);
+      throw error;
+    }
+  }
+
+  private formatConsumptionData(data: any, prm: string) {
+    console.log('Formatage des données de consommation');
+    try {
+      if (!data?.meter_reading?.interval_reading) {
+        console.error('Format de données invalide:', data);
+        throw new Error('Format de données invalide');
+      }
+
+      // Traiter les données pour les adapter au format attendu
+      const readings = data.meter_reading.interval_reading;
+      console.log(`Nombre de relevés: ${readings.length}`);
+      
+      // D'après la documentation, les données de consommation quotidienne
+      // sont fournies avec une valeur par jour, et peuvent inclure un champ measure_type
+      // pour distinguer les heures pleines (HP) et heures creuses (HC)
+      const readingsByDate: Record<string, { peakHours: number, offPeakHours: number }> = {};
+      
+      readings.forEach((reading: any) => {
+        const date = reading.date;
+        // Convertir la valeur en Wh en kWh (division par 1000)
+        const value = parseFloat(reading.value) / 1000;
+        const measureType = reading.measure_type;
+        
+        if (!readingsByDate[date]) {
+          readingsByDate[date] = { peakHours: 0, offPeakHours: 0 };
+        }
+        
+        if (measureType === 'HP') {
+          readingsByDate[date].peakHours += value;
+        } else if (measureType === 'HC') {
+          readingsByDate[date].offPeakHours += value;
+        } else {
+          // Si pas de distinction HP/HC, on considère que c'est en heures pleines
+          readingsByDate[date].peakHours += value;
+        }
+      });
+      
+      // Convertir le dictionnaire en tableau
+      const consumption = Object.entries(readingsByDate).map(([date, values]) => ({
+        date,
+        peakHours: values.peakHours,
+        offPeakHours: values.offPeakHours,
+        prm: data.meter_reading.usage_point_id || prm
+      }));
+
+      console.log(`Données formatées: ${consumption.length} jours`);
+      return { consumption };
+    } catch (error) {
+      console.error('Erreur lors du formatage des données:', error);
       throw error;
     }
   }
@@ -292,58 +359,6 @@ class EnedisAPI {
 
     this.accessToken = token;
     return token;
-  }
-
-  private formatConsumptionData(data: any, prm: string) {
-    console.log('Formatage des données de consommation');
-    try {
-      if (!data?.meter_reading?.interval_reading) {
-        console.error('Format de données invalide:', data);
-        throw new Error('Format de données invalide');
-      }
-
-      // Traiter les données pour les adapter au format attendu
-      const readings = data.meter_reading.interval_reading;
-      console.log(`Nombre de relevés: ${readings.length}`);
-      
-      // D'après la documentation, les données de consommation quotidienne
-      // sont fournies avec une valeur par jour, et peuvent inclure un champ measure_type
-      // pour distinguer les heures pleines (HP) et heures creuses (HC)
-      const readingsByDate: Record<string, { peakHours: number, offPeakHours: number }> = {};
-      
-      readings.forEach((reading: any) => {
-        const date = reading.date;
-        const value = parseFloat(reading.value);
-        const measureType = reading.measure_type;
-        
-        if (!readingsByDate[date]) {
-          readingsByDate[date] = { peakHours: 0, offPeakHours: 0 };
-        }
-        
-        if (measureType === 'HP') {
-          readingsByDate[date].peakHours += value;
-        } else if (measureType === 'HC') {
-          readingsByDate[date].offPeakHours += value;
-        } else {
-          // Si pas de distinction HP/HC, on considère que c'est en heures pleines
-          readingsByDate[date].peakHours += value;
-        }
-      });
-      
-      // Convertir le dictionnaire en tableau
-      const consumption = Object.entries(readingsByDate).map(([date, values]) => ({
-        date,
-        peakHours: values.peakHours,
-        offPeakHours: values.offPeakHours,
-        prm: data.meter_reading.usage_point_id || prm
-      }));
-
-      console.log(`Données formatées: ${consumption.length} jours`);
-      return { consumption };
-    } catch (error) {
-      console.error('Erreur lors du formatage des données:', error);
-      throw error;
-    }
   }
 }
 

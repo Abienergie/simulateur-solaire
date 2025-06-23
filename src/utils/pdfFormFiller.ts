@@ -204,6 +204,7 @@ function getPricingDataFromStorage(): PricingData | null {
       if (battery.type === 'physical' && battery.model) {
         batteryPrice = battery.model.oneTimePrice || 0;
       } else if (battery.type === 'virtual') {
+        // Smart Battery costs - monthly subscription only, no setup fee
         smartBatterySetupFee = 2000;
         
         if (battery.includeSmartCharger) {
@@ -251,6 +252,11 @@ function getPricingDataFromStorage(): PricingData | null {
         mountingSystemCost = 100 * numberOfPanels;
       }
     }
+    
+    // Get Ecojoko option
+    const includeEcojoko = localStorage.getItem('includeEcojoko') === 'true';
+    const freeEcojoko = localStorage.getItem('freeEcojoko') === 'true';
+    const ecojokoPrice = includeEcojoko && !freeEcojoko ? 229 : 0;
     
     // Get promo code information
     const appliedPromoCodes = localStorage.getItem('applied_promo_codes');
@@ -390,6 +396,16 @@ function getPricingDataFromStorage(): PricingData | null {
         });
       }
       
+      // Ajouter l'option Ecojoko si sélectionnée
+      if (includeEcojoko) {
+        items.push({
+          description: 'Option Ecojoko',
+          quantity: 1,
+          unitPrice: freeEcojoko ? 0 : 229,
+          totalPrice: freeEcojoko ? 0 : 229
+        });
+      }
+      
       if (primeAutoconsommation > 0) {
         items.push({
           description: 'Prime à l\'autoconsommation',
@@ -445,6 +461,16 @@ function getPricingDataFromStorage(): PricingData | null {
         });
       }
       
+      // Ajouter l'option Ecojoko si sélectionnée
+      if (includeEcojoko) {
+        items.push({
+          description: 'Option Ecojoko',
+          quantity: 1,
+          unitPrice: freeEcojoko ? 0 : 229,
+          totalPrice: freeEcojoko ? 0 : 229
+        });
+      }
+      
       if (myLightPrice > 0) {
         items.push({
           description: batteryType === 'virtual' ? 'Abonnement SmartBattery (annuel)' : 'Abonnement MyBattery (annuel)',
@@ -480,7 +506,8 @@ export async function fillPdfForm(
   clientInfo: ClientInfo,
   installation: InstallationInfo,
   mapImageData?: string | null,
-  projection?: FinancialProjection
+  projection?: FinancialProjection,
+  selectedDatasheets?: string[]
 ): Promise<Uint8Array> {
   try {
     if (!templateUrl) {
@@ -619,7 +646,7 @@ export async function fillPdfForm(
                 
                 // Ajuster les dimensions et la position pour éviter de chevaucher le titre et le tableau
                 // Titre est à environ height - 100, et le tableau commence à environ height - 350
-                const maxWidth = width - 80; // Augmenté de 20 points
+                const maxWidth = width - 80;
                 const maxHeight = 150; // Augmenté de 30 points
                 const { width: imgWidth, height: imgHeight } = image.scale(1);
                 
@@ -688,7 +715,7 @@ export async function fillPdfForm(
               }
               
               // Ajuster les dimensions pour s'adapter entre le titre et le tableau
-              const maxWidth = width - 80; // Augmenté de 20 points
+              const maxWidth = width - 80;
               const maxHeight = 150; // Augmenté de 30 points
               const { width: imgWidth, height: imgHeight } = image.scale(1);
               
@@ -979,19 +1006,28 @@ export async function fillPdfForm(
               
               // Calculate image dimensions to fit the page width while maintaining aspect ratio
               const { width: imgWidth, height: imgHeight } = img.scale(1);
-              const maxWidth = page5Width - 30; // Further reduced margin for larger image
-              const scale = maxWidth / imgWidth;
-              const drawHeight = imgHeight * scale * 1.4; // Increased height by 40%
+              const maxWidth = page5Width - 80;
+              
+              // Réduire la hauteur maximale pour laisser plus d'espace en bas
+              const maxHeight = page5Height - 250; // Réduit davantage pour éviter de chevaucher le texte de fin
+              
+              // Calculer le ratio en tenant compte des deux contraintes
+              const scaleWidth = maxWidth / imgWidth;
+              const scaleHeight = maxHeight / imgHeight;
+              const scale = Math.min(scaleWidth, scaleHeight);
+              
+              const drawWidth = imgWidth * scale;
+              const drawHeight = imgHeight * scale;
               
               // Draw the image - Moved up by 1cm (28.35 points)
               page5.drawImage(img, {
-                x: 15, // Further reduced left margin
+                x: 40,
                 y: page5Height - 120 - drawHeight, // Moved up by 1cm (28.35 points)
-                width: maxWidth,
+                width: drawWidth,
                 height: drawHeight
               });
               
-              console.log('Projection image embedded successfully with significantly increased size');
+              console.log('Projection image embedded successfully with adjusted size');
             }
           } catch (imgError) {
             console.warn('Failed to embed projection image:', imgError);
@@ -1000,11 +1036,11 @@ export async function fillPdfForm(
         } else {
           // If no image is available, draw the table manually
           // Draw table headers - Moved up by 1cm (28.35 points)
-          const tableX = 20; // Further reduced margin
+          const tableX = 40;
           const tableY = page5Height - 120; // Moved up by 1cm (28.35 points)
-          const tableWidth = page5Width - 40; // Further increased width
-          const rowHeight = 24; // Increased from 22 to 24
-          const headerHeight = 30; // Increased from 28 to 30
+          const tableWidth = page5Width - 80;
+          const rowHeight = 22;
+          const headerHeight = 28;
           
           // Define columns based on financing mode
           const isSubscription = projection.projectionAnnuelle[0].coutAbonnement > 0;
@@ -1033,12 +1069,12 @@ export async function fillPdfForm(
           // Draw header texts with larger font size
           for (let i = 0; i < columns.length; i++) {
             const col = columns[i];
-            const textWidth = embeddedBoldFont.widthOfTextAtSize(col, 12); // Increased from 11 to 12
+            const textWidth = embeddedBoldFont.widthOfTextAtSize(col, 11);
             const textX = tableX + (i * colWidth) + (colWidth / 2) - (textWidth / 2);
             page5.drawText(col, {
               x: textX,
               y: tableY + headerHeight/2 - 5,
-              size: 12, // Increased from 11 to 12
+              size: 11,
               font: embeddedBoldFont,
               color: rgb(0.2, 0.2, 0.2)
             });
@@ -1082,15 +1118,15 @@ export async function fillPdfForm(
             values.push(formatCurrency(year.gainTotal));
             values.push(formatCurrency(cumulativeGain));
             
-            // Draw each cell with larger font size
+            // Draw each cell with smaller font size
             for (let j = 0; j < values.length; j++) {
               const value = values[j];
-              const cellWidth = embeddedFont.widthOfTextAtSize(value, 11); // Increased from 10 to 11
+              const cellWidth = embeddedFont.widthOfTextAtSize(value, 10);
               const cellX = tableX + (j * colWidth) + (colWidth / 2) - (cellWidth / 2);
               page5.drawText(value, {
                 x: cellX,
                 y: rowY + rowHeight/2 - 5,
-                size: 11, // Increased from 10 to 11
+                size: 10,
                 font: embeddedFont,
                 color: rgb(0.2, 0.2, 0.2)
               });
@@ -1099,6 +1135,69 @@ export async function fillPdfForm(
         }
       } catch (error) {
         console.warn('Error adding financial projection table:', error);
+      }
+    }
+    
+    // Append technical datasheets if selected
+    if (selectedDatasheets && selectedDatasheets.length > 0) {
+      try {
+        console.log('Appending technical datasheets:', selectedDatasheets);
+        
+        // Get technical datasheets from localStorage
+        const datasheets = localStorage.getItem('technical_datasheets');
+        if (datasheets) {
+          const datasheetsList = JSON.parse(datasheets);
+          
+          for (const datasheetId of selectedDatasheets) {
+            const datasheet = datasheetsList.find((ds: any) => ds.id === datasheetId);
+            if (datasheet && datasheet.url) {
+              try {
+                console.log(`Fetching datasheet: ${datasheet.name} from ${datasheet.url}`);
+                
+                // Fetch the datasheet PDF
+                const datasheetResponse = await fetch(datasheet.url, {
+                  method: 'GET',
+                  headers: {
+                    'Accept': 'application/pdf',
+                    'Cache-Control': 'no-cache'
+                  },
+                  mode: 'cors'
+                });
+                
+                if (!datasheetResponse.ok) {
+                  console.warn(`Failed to fetch datasheet: ${datasheetResponse.status} ${datasheetResponse.statusText}`);
+                  continue;
+                }
+                
+                const datasheetBytes = await datasheetResponse.arrayBuffer();
+                if (!datasheetBytes || datasheetBytes.byteLength === 0) {
+                  console.warn('Datasheet PDF is empty');
+                  continue;
+                }
+                
+                // Load the datasheet PDF
+                const datasheetDoc = await PDFDocument.load(datasheetBytes);
+                
+                // Copy all pages from the datasheet
+                const copiedPages = await pdfDoc.copyPages(
+                  datasheetDoc, 
+                  datasheetDoc.getPageIndices()
+                );
+                
+                // Add each copied page to the main document
+                copiedPages.forEach(page => {
+                  pdfDoc.addPage(page);
+                });
+                
+                console.log(`Successfully appended datasheet: ${datasheet.name}`);
+              } catch (datasheetError) {
+                console.warn(`Error appending datasheet ${datasheet.name}:`, datasheetError);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error appending technical datasheets:', error);
       }
     }
     

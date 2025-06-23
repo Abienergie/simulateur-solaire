@@ -1,3 +1,5 @@
+import { serve } from 'std/http/server.ts'
+
 // Configuration CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,13 +13,14 @@ const ENEDIS_CONFIG = {
   clientSecret: 'Pb9H1p8zJ4IfX0xca5c7lficGo4a',
   redirectUri: 'https://abienergie.github.io/simulateur-solaire/#/oauth/callback',
   tokenUrl: 'https://gw.ext.prod.api.enedis.fr/oauth2/v3/token',
-  apiUrl: 'https://gw.ext.prod.api.enedis.fr/metering_data_dc/v5'
+  apiUrl: 'https://gw.ext.prod.api.enedis.fr/metering_data_dc/v5',
+  scope: 'fr_be_cons_detail_load_curve fr_be_cons_daily_consumption fr_be_cons_max_power fr_be_prod_daily_production fr_be_identity fr_be_address fr_be_contact'
 }
 
 console.log('Enedis Auth Function Starting...')
 
-Deno.serve(async (req) => {
-  console.log('Received request:', req.url, 'Method:', req.method)
+serve(async (req) => {
+  console.log('Received request:', req.url)
   
   // Gérer les requêtes OPTIONS pour CORS
   if (req.method === 'OPTIONS') {
@@ -102,7 +105,8 @@ Deno.serve(async (req) => {
         const formData = new URLSearchParams({
           grant_type: 'client_credentials',
           client_id: ENEDIS_CONFIG.clientId,
-          client_secret: ENEDIS_CONFIG.clientSecret
+          client_secret: ENEDIS_CONFIG.clientSecret,
+          scope: ENEDIS_CONFIG.scope
         })
         
         console.log('Request form data:', formData.toString())

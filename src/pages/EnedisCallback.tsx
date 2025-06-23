@@ -12,40 +12,13 @@ export default function EnedisCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        console.log('Traitement du callback Enedis...');
-        console.log('URL complète:', window.location.href);
-        
         // Extraire les paramètres de l'URL
         const params = new URLSearchParams(location.search);
-        const hash = location.hash;
-        
-        // Vérifier si les paramètres sont dans le hash (après #)
-        let code = params.get('code');
-        let error = params.get('error');
-        let state = params.get('state');
-        let usagePointId = params.get('usage_point_id');
-        let accessToken = params.get('access_token');
-        let refreshToken = params.get('refresh_token');
-        
-        // Si les paramètres sont dans le hash, les extraire
-        if (hash && hash.includes('?')) {
-          const hashParams = new URLSearchParams(hash.split('?')[1]);
-          code = code || hashParams.get('code');
-          error = error || hashParams.get('error');
-          state = state || hashParams.get('state');
-          usagePointId = usagePointId || hashParams.get('usage_point_id');
-          accessToken = accessToken || hashParams.get('access_token');
-          refreshToken = refreshToken || hashParams.get('refresh_token');
-        }
-        
-        console.log('Paramètres extraits:', { 
-          code: code ? '***' + (code.length > 6 ? code.slice(-6) : code) : null,
-          error,
-          state,
-          usagePointId,
-          accessToken: accessToken ? 'Présent' : 'Absent',
-          refreshToken: refreshToken ? 'Présent' : 'Absent'
-        });
+        const code = params.get('code');
+        const error = params.get('error');
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const usagePointId = params.get('usage_point_id');
 
         // Cas d'erreur
         if (error) {

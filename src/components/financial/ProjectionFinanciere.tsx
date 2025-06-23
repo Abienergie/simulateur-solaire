@@ -336,6 +336,7 @@ function ProjectionFinanciere() {
               dureeAbonnement={parameters.dureeAbonnement || 20}
               onDureeChange={(duree) => updateParameters({ dureeAbonnement: duree })}
               onKitSelect={handleKitSelect}
+              batterySelection={parameters.batterySelection}
             />
 
             <InstalledTechnologies

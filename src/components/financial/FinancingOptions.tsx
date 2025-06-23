@@ -25,6 +25,11 @@ interface FinancingOptionsProps {
   dureeAbonnement: number;
   onDureeChange: (duree: number) => void;
   onKitSelect?: (kit: RecommendedKit) => void;
+  batterySelection?: { 
+    type: string | null;
+    model?: any;
+    virtualCapacity?: number;
+  };
 }
 
 export default function FinancingOptions({
@@ -33,7 +38,8 @@ export default function FinancingOptions({
   puissanceCrete,
   dureeAbonnement,
   onDureeChange,
-  onKitSelect
+  onKitSelect,
+  batterySelection
 }: FinancingOptionsProps) {
   const monthlyPrice = getSubscriptionPrice(puissanceCrete, dureeAbonnement);
   const [revenuFiscal, setRevenuFiscal] = useState(() => {
@@ -49,6 +55,31 @@ export default function FinancingOptions({
 
   // Get base installation price for cash mode
   const basePrice = getPriceFromPower(puissanceCrete);
+
+  // Calculate battery monthly cost if applicable
+  const getBatteryMonthlyPrice = () => {
+    if (!batterySelection || !batterySelection.type) return 0;
+    
+    if (batterySelection.type === 'physical' && batterySelection.model?.monthlyPrice) {
+      return batterySelection.model.monthlyPrice;
+    } else if (batterySelection.type === 'virtual') {
+      // Smart Battery costs based on capacity
+      const capacity = batterySelection.virtualCapacity || 0;
+      const annualPrice = capacity === 100 ? 180 :
+                         capacity === 300 ? 288 :
+                         capacity === 600 ? 360 : 420;
+      return annualPrice / 12;
+    } else if (batterySelection.type === 'mybattery') {
+      // MyBattery: 1.055€/kWc/month
+      return puissanceCrete * 1.055;
+    }
+    
+    return 0;
+  };
+
+  // Total monthly price including battery if applicable
+  const totalMonthlyPrice = monthlyPrice + getBatteryMonthlyPrice();
+  const annualSubscriptionCost = totalMonthlyPrice * 12;
 
   // Load subscription enabled state from localStorage
   useEffect(() => {
@@ -87,7 +118,10 @@ export default function FinancingOptions({
   }, [selectedMode]);
 
   const calculateAffordableKits = (revenuAnnuel: number) => {
-    const maxAnnualPayment = revenuAnnuel * 0.04;
+    // Utiliser le seuil de 7% si une batterie est sélectionnée, sinon 4%
+    const maxRatioPercentage = batterySelection?.type ? 7 : 4;
+    const maxAnnualPayment = revenuAnnuel * (maxRatioPercentage / 100);
+    
     const durations = [25, 20, 15, 10];
     const powers = [2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0];
     
@@ -95,15 +129,31 @@ export default function FinancingOptions({
     
     for (const power of powers) {
       for (const duration of durations) {
-        const monthlyPayment = getSubscriptionPrice(power, duration);
-        const annualPayment = monthlyPayment * 12;
+        const baseMonthlyPayment = getSubscriptionPrice(power, duration);
+        
+        // Calculer le coût mensuel de la batterie pour cette puissance
+        let batteryMonthlyPrice = 0;
+        if (batterySelection?.type === 'physical' && batterySelection.model?.monthlyPrice) {
+          batteryMonthlyPrice = batterySelection.model.monthlyPrice;
+        } else if (batterySelection?.type === 'virtual') {
+          const capacity = batterySelection.virtualCapacity || 0;
+          const annualPrice = capacity === 100 ? 180 :
+                             capacity === 300 ? 288 :
+                             capacity === 600 ? 360 : 420;
+          batteryMonthlyPrice = annualPrice / 12;
+        } else if (batterySelection?.type === 'mybattery') {
+          batteryMonthlyPrice = power * 1.055;
+        }
+        
+        const totalMonthlyPayment = baseMonthlyPayment + batteryMonthlyPrice;
+        const annualPayment = totalMonthlyPayment * 12;
         const annualRatio = (annualPayment / revenuAnnuel) * 100;
         
-        if (annualRatio <= 4) {
+        if (annualRatio <= maxRatioPercentage) {
           kits.push({
             power,
             duration,
-            monthlyPayment,
+            monthlyPayment: totalMonthlyPayment,
             annualRatio
           });
         }
@@ -116,8 +166,11 @@ export default function FinancingOptions({
   const checkEligibility = (revenu: number) => {
     if (revenu <= 0) return null;
     
-    const annualSubscription = monthlyPrice * 12;
-    const revenuMinimumRequis = Math.ceil(annualSubscription / 0.04);
+    // Utiliser le seuil de 7% si une batterie est sélectionnée, sinon 4%
+    const maxRatioPercentage = batterySelection?.type ? 7 : 4;
+    
+    const annualSubscription = annualSubscriptionCost;
+    const revenuMinimumRequis = Math.ceil(annualSubscription / (maxRatioPercentage / 100));
     
     return revenu >= revenuMinimumRequis;
   };
@@ -173,6 +226,9 @@ export default function FinancingOptions({
     localStorage.setItem('financialMode', mode);
     console.log('[FinancingOptions] Mode changed to:', mode);
   };
+
+  // Déterminer le seuil de pourcentage à afficher
+  const eligibilityThreshold = batterySelection?.type ? '7%' : '4%';
 
   return (
     <div className="space-y-6">
@@ -244,10 +300,15 @@ export default function FinancingOptions({
               <div className="mb-4">
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-bold text-blue-600">
-                    {monthlyPrice.toFixed(2)} €
+                    {totalMonthlyPrice.toFixed(2)} €
                   </span>
                   <span className="text-gray-500">/mois</span>
                 </div>
+                {batterySelection?.type && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Dont {getBatteryMonthlyPrice().toFixed(2)} € pour la solution de stockage
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-4 gap-2 mb-4">
@@ -315,7 +376,7 @@ export default function FinancingOptions({
                 <HelpCircle className="h-4 w-4 text-gray-400 cursor-help" />
                 <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-sm rounded-lg py-2 px-3 w-72 bottom-full left-1/2 -translate-x-1/2 mb-2">
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                  Le revenu fiscal de référence se trouve sur votre dernier avis d'imposition, en première page dans l'encadré "Vos références".
+                  Le revenu fiscal de référence se trouve sur votre dernier avis d'imposition, en première page dans l\'encadré "Vos références".
                 </div>
               </div>
             </label>
@@ -332,6 +393,10 @@ export default function FinancingOptions({
                   : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
               }`}
             />
+            <p className="mt-1 text-sm text-blue-600">
+              Pour un abonnement {batterySelection?.type ? 'avec batterie' : 'sans batterie'}, 
+              l'annualité ne doit pas dépasser {eligibilityThreshold} de votre revenu fiscal.
+            </p>
 
             {revenuFiscal && parseInt(revenuFiscal, 10) > 0 && (
               <>
@@ -342,8 +407,8 @@ export default function FinancingOptions({
                       <p className="font-medium">Vous êtes éligible à cet abonnement</p>
                       <p className="mt-1">
                         Vos revenus vous permettent de souscrire à cette offre en toute sérénité.
-                        L'abonnement mensuel de {formatCurrency(monthlyPrice)} 
-                        représente moins de 4% de vos revenus annuels.
+                        L'abonnement mensuel de {formatCurrency(totalMonthlyPrice)} 
+                        représente moins de {batterySelection?.type ? '7' : '4'}% de vos revenus annuels.
                       </p>
                     </div>
                   </div>
@@ -356,8 +421,8 @@ export default function FinancingOptions({
                       <div className="text-sm text-amber-800">
                         <p className="font-medium">Kit solaire trop puissant pour votre budget</p>
                         <p className="mt-1">
-                          Pour un abonnement mensuel de {formatCurrency(monthlyPrice)}, 
-                          votre revenu fiscal devrait être d'au moins {formatCurrency(Math.ceil((monthlyPrice * 12) / 0.04))}. 
+                          Pour un abonnement mensuel de {formatCurrency(totalMonthlyPrice)}, 
+                          votre revenu fiscal devrait être d'au moins {formatCurrency(Math.ceil(annualSubscriptionCost / (batterySelection?.type ? 0.07 : 0.04)))}. 
                           Voici des kits solaires adaptés à votre budget :
                         </p>
                       </div>

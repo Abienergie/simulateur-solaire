@@ -57,6 +57,7 @@ export async function generatePDF(
   const freeDeposit = localStorage.getItem('promo_free_deposit') === 'true';
   const freeBatterySetup = localStorage.getItem('promo_free_battery_setup') === 'true';
   const freeSmartBatterySetup = localStorage.getItem('promo_free_smart_battery_setup') === 'true';
+  const freeEcojoko = localStorage.getItem('freeEcojoko') === 'true';
   
   // Récupérer les informations sur les batteries
   const batterySelection = localStorage.getItem('batterySelection');
@@ -73,6 +74,9 @@ export async function generatePDF(
   const inverterType = localStorage.getItem('inverterType') || 'central';
   const mountingSystem = localStorage.getItem('mountingSystem') || 'surimposition';
   const bifacial = localStorage.getItem('bifacial') === 'true';
+  
+  // Récupérer l'option Ecojoko
+  const includeEcojoko = localStorage.getItem('includeEcojoko') === 'true';
   
   // Récupérer l'image satellite si disponible
   const satelliteImageUrl = localStorage.getItem('satellite_image_url');
@@ -200,6 +204,11 @@ export async function generatePDF(
     }
   }
   
+  // Ajouter l'option Ecojoko si sélectionnée
+  if (includeEcojoko) {
+    installationData.push(['Assistant connecté', 'Ecojoko']);
+  }
+  
   autoTable(doc, {
     startY: finalY + 20,
     head: [],
@@ -304,6 +313,15 @@ export async function generatePDF(
       }
     }
     
+    // Ajouter l'option Ecojoko si sélectionnée
+    if (includeEcojoko) {
+      if (freeEcojoko) {
+        financialData.push(['Option Ecojoko', `${formatCurrency(0)} (offert)`]);
+      } else {
+        financialData.push(['Option Ecojoko', formatCurrency(229)]);
+      }
+    }
+    
     // Ajouter la prime à l'autoconsommation
     if (params.primeAutoconsommation > 0 && params.connectionType !== 'total_sale') {
       financialData.push(['Prime à l\'autoconsommation', `- ${formatCurrency(params.primeAutoconsommation)}`]);
@@ -314,10 +332,27 @@ export async function generatePDF(
       financialData.push(['Remise commerciale', `- ${formatCurrency(params.remiseCommerciale)}`]);
     }
     
-    // Calculer le prix final
-    const totalWithPromo = projection.prixFinal - promoDiscount;
+    // Ajouter les remises des codes promo
+    if (promoDiscount > 0) {
+      financialData.push(['Remise code promo', `- ${formatCurrency(promoDiscount)}`]);
+      
+      // Ajouter les codes promo appliqués
+      if (appliedPromoCodes) {
+        try {
+          const codes = JSON.parse(appliedPromoCodes);
+          if (codes.length > 0) {
+            financialData.push(['Codes promo appliqués', codes.join(', ')]);
+          }
+        } catch (e) {
+          console.error('Erreur lors du parsing des codes promo:', e);
+        }
+      }
+    }
     
-    financialData.push(['Prix final', formatCurrency(totalWithPromo)]);
+    // Calculer le prix final
+    const totalPrice = projection.prixFinal - promoDiscount;
+    
+    financialData.push(['Prix final', formatCurrency(totalPrice)]);
     
     // Ajouter les économies annuelles
     const firstYearSavings = projection.projectionAnnuelle[0].economiesAutoconsommation + 
@@ -344,7 +379,6 @@ export async function generatePDF(
     
     // Vérifier si le code promo pour la caution est appliqué
     const monthlyPayment = params.dureeAbonnement ? projection.projectionAnnuelle[0].coutAbonnement / 12 : 0;
-    // Calculate deposit based only on subscription price, not including MyLight
     const deposit = freeDeposit ? 0 : monthlyPayment * 2;
     
     if (freeDeposit) {
@@ -373,6 +407,27 @@ export async function generatePDF(
         } else {
           financialData.push(['Frais d\'activation MyBattery', formatCurrency(179)]);
         }
+      }
+    }
+    
+    // Ajouter l'option Ecojoko si sélectionnée
+    if (includeEcojoko) {
+      if (freeEcojoko) {
+        financialData.push(['Option Ecojoko', `${formatCurrency(0)} (offert)`]);
+      } else {
+        financialData.push(['Option Ecojoko', formatCurrency(229)]);
+      }
+    }
+    
+    // Ajouter les codes promo appliqués
+    if (appliedPromoCodes) {
+      try {
+        const codes = JSON.parse(appliedPromoCodes);
+        if (codes.length > 0) {
+          financialData.push(['Codes promo appliqués', codes.join(', ')]);
+        }
+      } catch (e) {
+        console.error('Erreur lors du parsing des codes promo:', e);
       }
     }
     

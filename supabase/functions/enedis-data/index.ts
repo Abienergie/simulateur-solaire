@@ -35,6 +35,7 @@ serve(async (req) => {
       let body;
       try {
         body = await req.json();
+        console.log("Requête reçue:", body);
       } catch (error) {
         console.error('Error parsing request body:', error);
         return new Response(
@@ -108,6 +109,10 @@ serve(async (req) => {
           
           const data = await response.json();
           
+          // Récupérer les informations supplémentaires du client
+          console.log("Récupération des informations supplémentaires du client...");
+          const additionalInfo = await getAdditionalInfo(body.prm, body.token);
+          
           // Stocker les données dans Supabase si possible
           if (data.meter_reading?.interval_reading) {
             try {
@@ -129,8 +134,11 @@ serve(async (req) => {
             }
           }
           
-          // Retourner les données à l'application
-          return new Response(JSON.stringify(data), {
+          // Retourner les données à l'application avec les informations supplémentaires
+          return new Response(JSON.stringify({
+            ...data,
+            additionalInfo
+          }), {
             headers: {
               'Content-Type': 'application/json',
               ...corsHeaders
@@ -182,6 +190,202 @@ serve(async (req) => {
           );
         }
         
+        case 'get_identity': {
+          // Récupérer les informations d'identité
+          if (!body.token || !body.prm) {
+            throw new Error('Paramètres manquants: token et prm sont requis');
+          }
+          
+          console.log(`Récupération des informations d'identité pour le PDL ${body.prm}`);
+          
+          // Construire l'URL de l'API Enedis
+          const apiUrl = `${ENEDIS_API_BASE}/customers_i/v5/identity?usage_point_id=${body.prm}`;
+          
+          // Appeler l'API Enedis
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${body.token}`,
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            console.error(`Erreur API Enedis Identity (${response.status})`);
+            return new Response(
+              JSON.stringify({ 
+                error: true, 
+                code: 'API_ERROR',
+                message: `Erreur API Enedis: ${response.status}`
+              }),
+              {
+                status: response.status,
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...corsHeaders
+                }
+              }
+            );
+          }
+          
+          const data = await response.json();
+          
+          // Retourner les données à l'application
+          return new Response(JSON.stringify(data), {
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
+        }
+        
+        case 'get_address': {
+          // Récupérer les informations d'adresse
+          if (!body.token || !body.prm) {
+            throw new Error('Paramètres manquants: token et prm sont requis');
+          }
+          
+          console.log(`Récupération des informations d'adresse pour le PDL ${body.prm}`);
+          
+          // Construire l'URL de l'API Enedis
+          const apiUrl = `${ENEDIS_API_BASE}/customers_upa/v5/usage_points/addresses?usage_point_id=${body.prm}`;
+          
+          // Appeler l'API Enedis
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${body.token}`,
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            console.error(`Erreur API Enedis Address (${response.status})`);
+            return new Response(
+              JSON.stringify({ 
+                error: true, 
+                code: 'API_ERROR',
+                message: `Erreur API Enedis: ${response.status}`
+              }),
+              {
+                status: response.status,
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...corsHeaders
+                }
+              }
+            );
+          }
+          
+          const data = await response.json();
+          
+          // Retourner les données à l'application
+          return new Response(JSON.stringify(data), {
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
+        }
+        
+        case 'get_contract': {
+          // Récupérer les informations de contrat
+          if (!body.token || !body.prm) {
+            throw new Error('Paramètres manquants: token et prm sont requis');
+          }
+          
+          console.log(`Récupération des informations de contrat pour le PDL ${body.prm}`);
+          
+          // Construire l'URL de l'API Enedis
+          const apiUrl = `${ENEDIS_API_BASE}/customers_upc/v5/usage_points/contracts?usage_point_id=${body.prm}`;
+          
+          // Appeler l'API Enedis
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${body.token}`,
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            console.error(`Erreur API Enedis Contracts (${response.status})`);
+            return new Response(
+              JSON.stringify({ 
+                error: true, 
+                code: 'API_ERROR',
+                message: `Erreur API Enedis: ${response.status}`
+              }),
+              {
+                status: response.status,
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...corsHeaders
+                }
+              }
+            );
+          }
+          
+          const data = await response.json();
+          
+          // Retourner les données à l'application
+          return new Response(JSON.stringify(data), {
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
+        }
+        
+        case 'get_contact': {
+          // Récupérer les informations de contact
+          if (!body.token || !body.prm) {
+            throw new Error('Paramètres manquants: token et prm sont requis');
+          }
+          
+          console.log(`Récupération des informations de contact pour le PDL ${body.prm}`);
+          
+          // Construire l'URL de l'API Enedis
+          const apiUrl = `${ENEDIS_API_BASE}/customers_cd/v5/contact_data?usage_point_id=${body.prm}`;
+          
+          // Appeler l'API Enedis
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${body.token}`,
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            console.error(`Erreur API Enedis Contact (${response.status})`);
+            return new Response(
+              JSON.stringify({ 
+                error: true, 
+                code: 'API_ERROR',
+                message: `Erreur API Enedis: ${response.status}`
+              }),
+              {
+                status: response.status,
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...corsHeaders
+                }
+              }
+            );
+          }
+          
+          const data = await response.json();
+          
+          // Retourner les données à l'application
+          return new Response(JSON.stringify(data), {
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders
+            }
+          });
+        }
+        
         default:
           throw new Error(`Action non supportée: ${body.action}`);
       }
@@ -217,6 +421,67 @@ serve(async (req) => {
   }
 });
 
+// Fonction pour récupérer toutes les informations supplémentaires en parallèle
+async function getAdditionalInfo(prm: string, token: string) {
+  try {
+    console.log(`Récupération des informations supplémentaires pour le PDL ${prm}`);
+    
+    // Récupérer les informations d'identité, d'adresse, de contrat et de contact en parallèle
+    const [identityResponse, addressResponse, contractResponse, contactResponse] = await Promise.all([
+      fetch(`${ENEDIS_API_BASE}/customers_i/v5/identity?usage_point_id=${prm}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      }),
+      fetch(`${ENEDIS_API_BASE}/customers_upa/v5/usage_points/addresses?usage_point_id=${prm}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      }),
+      fetch(`${ENEDIS_API_BASE}/customers_upc/v5/usage_points/contracts?usage_point_id=${prm}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      }),
+      fetch(`${ENEDIS_API_BASE}/customers_cd/v5/contact_data?usage_point_id=${prm}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      })
+    ]);
+    
+    // Traiter les réponses
+    const identity = identityResponse.ok ? await identityResponse.json() : null;
+    const address = addressResponse.ok ? await addressResponse.json() : null;
+    const contract = contractResponse.ok ? await contractResponse.json() : null;
+    const contact = contactResponse.ok ? await contactResponse.json() : null;
+    
+    console.log("Informations supplémentaires récupérées avec succès");
+    console.log("Identité:", identity ? "OK" : "Non disponible");
+    console.log("Adresse:", address ? "OK" : "Non disponible");
+    console.log("Contrat:", contract ? "OK" : "Non disponible");
+    console.log("Contact:", contact ? "OK" : "Non disponible");
+    
+    return {
+      identity,
+      address,
+      contract,
+      contact
+    };
+  } catch (error) {
+    console.error('Erreur lors de la récupération des informations supplémentaires:', error);
+    return null;
+  }
+}
+
 // Fonction pour formater les données de consommation pour le stockage
 function formatConsumptionData(data: any, prm: string): any[] {
   if (!data.meter_reading?.interval_reading || !Array.isArray(data.meter_reading.interval_reading)) {
@@ -231,7 +496,8 @@ function formatConsumptionData(data: any, prm: string): any[] {
   
   for (const reading of readings) {
     const date = reading.date;
-    const value = parseFloat(reading.value);
+    // Convertir la valeur en Wh en kWh (division par 1000)
+    const value = parseFloat(reading.value) / 1000;
     const measureType = reading.measure_type;
     
     if (!readingsByDate[date]) {

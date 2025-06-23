@@ -9,6 +9,7 @@ export function useEnedisData() {
   const [consumptionData, setConsumptionData] = useState<ConsumptionData[] | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [rawApiResponse, setRawApiResponse] = useState<any>(null);
+  const [additionalInfo, setAdditionalInfo] = useState<any>(null);
 
   // Vérifier la connexion au chargement
   useEffect(() => {
@@ -37,23 +38,21 @@ export function useEnedisData() {
             if (data && data.length > 0) {
               console.log(`${data.length} jours de données trouvés dans le localStorage`);
               setConsumptionData(data);
-            } else {
-              console.log('Pas de données dans le localStorage, tentative de récupération depuis Enedis');
-              // Si pas de données dans le localStorage, essayer de les récupérer depuis Enedis
+            }
+            
+            // Récupérer les informations supplémentaires du localStorage
+            const additionalInfoStr = localStorage.getItem('enedis_additional_info');
+            if (additionalInfoStr) {
               try {
-                await fetchConsumptionData(pdl);
-              } catch (fetchError) {
-                console.error('Échec de la récupération des données Enedis:', fetchError);
+                const additionalInfoData = JSON.parse(additionalInfoStr);
+                setAdditionalInfo(additionalInfoData);
+                console.log('Informations supplémentaires chargées depuis le localStorage');
+              } catch (e) {
+                console.error('Erreur lors du parsing des informations supplémentaires:', e);
               }
             }
           } catch (error) {
             console.error('Erreur lors du chargement des données:', error);
-            // En cas d'erreur, essayer quand même de récupérer les données d'Enedis
-            try {
-              await fetchConsumptionData(pdl);
-            } catch (fetchError) {
-              console.error('Échec de la récupération des données Enedis:', fetchError);
-            }
           }
         }
       }
@@ -71,9 +70,14 @@ export function useEnedisData() {
       // Vérifier si on a un token
       const token = localStorage.getItem('enedis_access_token');
       if (!token) {
-        console.log('Pas de token disponible');
-        setIsConnected(false);
-        return false;
+        console.log('Pas de token disponible, tentative d\'obtention d\'un nouveau token');
+        try {
+          await enedisApi.getApiToken();
+        } catch (tokenError) {
+          console.error('Erreur lors de l\'obtention d\'un token:', tokenError);
+          setIsConnected(false);
+          throw new Error('Impossible d\'obtenir un token d\'accès. Veuillez vous connecter à Enedis.');
+        }
       }
       
       // Tester la connexion avec l'API Enedis
@@ -115,6 +119,13 @@ export function useEnedisData() {
         localStorage.setItem('enedis_raw_response', JSON.stringify(enedisData.rawResponse));
       }
       
+      // Stocker les informations supplémentaires
+      if (enedisData.additionalInfo) {
+        setAdditionalInfo(enedisData.additionalInfo);
+        // Sauvegarder dans le localStorage pour référence
+        localStorage.setItem('enedis_additional_info', JSON.stringify(enedisData.additionalInfo));
+      }
+      
       if (!enedisData || !enedisData.consumption || enedisData.consumption.length === 0) {
         console.log('Aucune donnée de consommation disponible');
         throw new Error('Aucune donnée de consommation disponible');
@@ -132,7 +143,8 @@ export function useEnedisData() {
       
       return {
         consumption: data,
-        rawResponse: enedisData.rawResponse
+        rawResponse: enedisData.rawResponse,
+        additionalInfo: enedisData.additionalInfo
       };
     } catch (error) {
       console.error('Erreur lors de la récupération des données:', error);
@@ -152,8 +164,10 @@ export function useEnedisData() {
     localStorage.removeItem('enedis_refresh_token');
     localStorage.removeItem('enedis_token_expires');
     localStorage.removeItem('enedis_raw_response');
+    localStorage.removeItem('enedis_additional_info');
     setConsumptionData(null);
     setRawApiResponse(null);
+    setAdditionalInfo(null);
     setIsConnected(false);
     setError(null);
   }, []);
@@ -163,6 +177,7 @@ export function useEnedisData() {
     error,
     consumptionData,
     rawApiResponse,
+    additionalInfo,
     isConnected,
     testConnection,
     fetchConsumptionData,
