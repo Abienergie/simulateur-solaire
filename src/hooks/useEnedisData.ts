@@ -13,45 +13,47 @@ export function useEnedisData() {
   // Vérifier la connexion au chargement
   useEffect(() => {
     const checkConnection = async () => {
-      const pdl = localStorage.getItem('enedis_usage_point_id');
       const token = localStorage.getItem('enedis_access_token');
       
       console.log('Vérification de la connexion Enedis:', { 
-        pdl: pdl ? 'Présent' : 'Absent', 
         token: token ? 'Présent' : 'Absent' 
       });
       
-      if (pdl && token) {
+      if (token) {
         setIsConnected(true);
         
-        // Charger les données du localStorage
-        const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split('T')[0];
-          
-        try {
-          console.log('Chargement des données depuis le localStorage');
-          const data = await getConsumptionData(pdl, startDate, endDate);
-          if (data && data.length > 0) {
-            console.log(`${data.length} jours de données trouvés dans le localStorage`);
-            setConsumptionData(data);
-          } else {
-            console.log('Pas de données dans le localStorage, tentative de récupération depuis Enedis');
-            // Si pas de données dans le localStorage, essayer de les récupérer depuis Enedis
+        // Si on a aussi un PDL, charger les données
+        const pdl = localStorage.getItem('enedis_usage_point_id');
+        if (pdl) {
+          // Charger les données du localStorage
+          const endDate = new Date().toISOString().split('T')[0];
+          const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0];
+            
+          try {
+            console.log('Chargement des données depuis le localStorage');
+            const data = await getConsumptionData(pdl, startDate, endDate);
+            if (data && data.length > 0) {
+              console.log(`${data.length} jours de données trouvés dans le localStorage`);
+              setConsumptionData(data);
+            } else {
+              console.log('Pas de données dans le localStorage, tentative de récupération depuis Enedis');
+              // Si pas de données dans le localStorage, essayer de les récupérer depuis Enedis
+              try {
+                await fetchConsumptionData(pdl);
+              } catch (fetchError) {
+                console.error('Échec de la récupération des données Enedis:', fetchError);
+              }
+            }
+          } catch (error) {
+            console.error('Erreur lors du chargement des données:', error);
+            // En cas d'erreur, essayer quand même de récupérer les données d'Enedis
             try {
               await fetchConsumptionData(pdl);
             } catch (fetchError) {
               console.error('Échec de la récupération des données Enedis:', fetchError);
             }
-          }
-        } catch (error) {
-          console.error('Erreur lors du chargement des données:', error);
-          // En cas d'erreur, essayer quand même de récupérer les données d'Enedis
-          try {
-            await fetchConsumptionData(pdl);
-          } catch (fetchError) {
-            console.error('Échec de la récupération des données Enedis:', fetchError);
           }
         }
       }

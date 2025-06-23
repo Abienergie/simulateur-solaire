@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Link as LinkIcon, Lock, Info, Search, ExternalLink, AlertCircle, Download } from 'lucide-react';
+import { Link as LinkIcon, Lock, Info, Search, ExternalLink, AlertCircle, Download, Loader2, CheckCircle } from 'lucide-react';
 import { useEnedisData } from '../hooks/useEnedisData';
 import ConsumptionChart from '../components/ConsumptionChart';
 import { useLocation } from 'react-router-dom';
+import { enedisApi } from '../utils/api/enedisApi';
 
 const AbieLink: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [rawData, setRawData] = useState<string | null>(null);
+  const [pdlInput, setPdlInput] = useState('');
   const location = useLocation();
-  const { consumptionData, isConnected, fetchConsumptionData, resetData } = useEnedisData();
+  const { consumptionData, isConnected, fetchConsumptionData, testConnection, resetData } = useEnedisData();
 
   useEffect(() => {
     // Vérifier les paramètres d'URL pour les messages de succès/erreur
@@ -58,6 +60,34 @@ const AbieLink: React.FC = () => {
     } catch (err) {
       setError('Erreur lors de la redirection');
       console.error('Erreur:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTestPDL = async () => {
+    if (!pdlInput || pdlInput.length !== 14) {
+      setError('Veuillez saisir un numéro PDL valide (14 chiffres)');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      // Tester l'accès au PDL
+      const hasAccess = await testConnection(pdlInput);
+      
+      if (hasAccess) {
+        setSuccess(`Accès confirmé au PDL ${pdlInput}`);
+        // Récupérer les données
+        await fetchConsumptionData(pdlInput);
+      } else {
+        setError(`Impossible d'accéder au PDL ${pdlInput}. Vérifiez que vous avez donné votre consentement pour ce point de livraison.`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la vérification du PDL');
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +165,8 @@ const AbieLink: React.FC = () => {
       )}
 
       {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
           <p className="text-green-700">{success}</p>
         </div>
       )}
@@ -150,7 +181,14 @@ const AbieLink: React.FC = () => {
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               disabled={isLoading}
             >
-              {isLoading ? 'Chargement...' : 'Récupérer vos données'}
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Chargement...
+                </span>
+              ) : (
+                'Récupérer vos données'
+              )}
             </button>
             
             <button
@@ -219,9 +257,11 @@ const AbieLink: React.FC = () => {
             </h2>
 
             <div className="space-y-6">
-              <div className="space-y-4">
-                <p className="text-gray-600">
-                  Pour connecter votre compteur Linky, cliquez sur le bouton ci-dessous. Vous serez redirigé vers le site d'Enedis où vous pourrez vous authentifier et autoriser l'accès à vos données de consommation.
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-medium text-blue-900 mb-2">Étape 1: Authentification Enedis</h3>
+                <p className="text-sm text-blue-800 mb-4">
+                  Connectez-vous à votre compte Enedis pour donner votre consentement à l'accès à vos données.
+                  Cette étape est nécessaire pour autoriser l'application à accéder à vos données de consommation.
                 </p>
                 
                 <div className="flex justify-center">
@@ -235,6 +275,44 @@ const AbieLink: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {isConnected && (
+                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                  <h3 className="font-medium text-amber-900 mb-2">Étape 2: Accéder à un point de livraison (PDL)</h3>
+                  <p className="text-sm text-amber-800 mb-4">
+                    Saisissez votre numéro de PDL pour accéder à vos données de consommation.
+                    Vous devez avoir donné votre consentement pour ce PDL lors de l'étape 1.
+                  </p>
+                  
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={pdlInput}
+                      onChange={(e) => setPdlInput(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                      placeholder="Numéro PDL (14 chiffres)"
+                      className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      maxLength={14}
+                    />
+                    <button
+                      onClick={handleTestPDL}
+                      disabled={isLoading || pdlInput.length !== 14}
+                      className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50"
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Vérification...
+                        </span>
+                      ) : (
+                        'Vérifier l\'accès'
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-amber-700">
+                    Le numéro PDL (Point De Livraison) est un identifiant à 14 chiffres qui se trouve sur votre facture d'électricité.
+                  </p>
+                </div>
+              )}
 
               {isLoading && (
                 <div className="flex justify-center mt-4">

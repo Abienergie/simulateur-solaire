@@ -105,17 +105,12 @@ class EnedisAPI {
       this.accessToken = data.access_token;
       localStorage.setItem('enedis_access_token', data.access_token);
       
-      // Sauvegarder la date d'expiration
-      if (data.expires_at) {
-        localStorage.setItem('enedis_token_expires', data.expires_at);
-      } else {
-        // Fallback: 3h30 = 12600 secondes
-        const expiresAt = new Date();
-        expiresAt.setSeconds(expiresAt.getSeconds() + (data.expires_in || 12600));
-        localStorage.setItem('enedis_token_expires', expiresAt.toISOString());
-      }
+      // Sauvegarder la date d'expiration (3h30 = 12600 secondes)
+      const expiresAt = new Date();
+      expiresAt.setSeconds(expiresAt.getSeconds() + (data.expires_in || 12600));
+      localStorage.setItem('enedis_token_expires', expiresAt.toISOString());
       
-      console.log('Token API obtenu avec succès, valable jusqu\'à', data.expires_at || 'inconnu');
+      console.log('Token API obtenu avec succès, valable jusqu\'à', expiresAt.toLocaleString());
       
       return data.access_token;
     } catch (error) {
