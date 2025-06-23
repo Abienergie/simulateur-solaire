@@ -73,6 +73,57 @@ class EnedisAPI {
     }
   }
 
+  // Méthode pour obtenir un token d'API directement (sans passer par l'authentification utilisateur)
+  public async getApiToken(): Promise<string> {
+    try {
+      console.log('Demande d\'un token d\'API...');
+      
+      // Utiliser la fonction Edge Supabase pour obtenir un token
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const functionUrl = `${supabaseUrl}/functions/v1/enedis-token-refresh`;
+      
+      const response = await fetch(functionUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erreur lors de la demande de token API:', errorText);
+        throw new Error(`Échec de l'obtention du token API: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.access_token) {
+        throw new Error('Token API non reçu');
+      }
+      
+      // Sauvegarder le token
+      this.accessToken = data.access_token;
+      localStorage.setItem('enedis_access_token', data.access_token);
+      
+      // Sauvegarder la date d'expiration
+      if (data.expires_at) {
+        localStorage.setItem('enedis_token_expires', data.expires_at);
+      } else {
+        // Fallback: 3h30 = 12600 secondes
+        const expiresAt = new Date();
+        expiresAt.setSeconds(expiresAt.getSeconds() + (data.expires_in || 12600));
+        localStorage.setItem('enedis_token_expires', expiresAt.toISOString());
+      }
+      
+      console.log('Token API obtenu avec succès, valable jusqu\'à', data.expires_at || 'inconnu');
+      
+      return data.access_token;
+    } catch (error) {
+      console.error('Erreur lors de l\'obtention du token API:', error);
+      throw error;
+    }
+  }
+
   public async testConnection(prm: string): Promise<boolean> {
     try {
       console.log('Test de connexion pour le PDL:', prm);
@@ -82,16 +133,11 @@ class EnedisAPI {
         return false;
       }
 
-      // Vérifier si le token est valide en faisant une requête simple
-      const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 7); // Juste une semaine pour tester
-      
-      // Utiliser la fonction Edge Supabase pour l'appel API
+      // Utiliser la fonction Edge Supabase pour vérifier l'accès au PDL
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const functionUrl = `${supabaseUrl}/functions/v1/enedis-data`;
       
-      console.log('Appel de la fonction Edge pour tester la connexion');
+      console.log('Appel de la fonction Edge pour tester l\'accès au PDL');
       
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -100,16 +146,26 @@ class EnedisAPI {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          action: 'get_consumption',
+          action: 'check_pdl_access',
           token,
-          prm,
-          startDate: startDate.toISOString().split('T')[0],
-          endDate
+          prm
         })
       });
 
-      console.log('Réponse du test de connexion:', response.status);
-      return response.ok;
+      if (!response.ok) {
+        console.error('Erreur lors de la vérification du PDL:', response.status);
+        return false;
+      }
+      
+      const result = await response.json();
+      console.log('Résultat de la vérification du PDL:', result);
+      
+      // Si le PDL est accessible, le sauvegarder
+      if (result.hasAccess) {
+        localStorage.setItem('enedis_usage_point_id', prm);
+      }
+      
+      return result.hasAccess;
     } catch (error) {
       console.error('Erreur lors du test de connexion:', error);
       return false;
@@ -174,11 +230,8 @@ class EnedisAPI {
         // Si le token est expiré, essayer de le rafraîchir et réessayer
         if (response.status === 401) {
           console.log('Token expiré, tentative de rafraîchissement');
-          const refreshToken = localStorage.getItem('enedis_refresh_token');
-          if (refreshToken) {
-            await this.refreshToken(refreshToken);
-            return this.getConsumptionData(prm, startDate, endDate);
-          }
+          await this.getApiToken(); // Obtenir un nouveau token
+          return this.getConsumptionData(prm, startDate, endDate);
         }
         
         throw new Error(`Erreur API Enedis: ${response.status}`);
@@ -219,8 +272,13 @@ class EnedisAPI {
     const expiresAt = localStorage.getItem('enedis_token_expires');
     
     if (!token || !expiresAt) {
-      console.log('Pas de token dans le localStorage');
-      return null;
+      console.log('Pas de token dans le localStorage, tentative d\'obtention d\'un nouveau token');
+      try {
+        return await this.getApiToken();
+      } catch (error) {
+        console.error('Erreur lors de l\'obtention d\'un nouveau token:', error);
+        return null;
+      }
     }
 
     console.log('Token trouvé dans le localStorage, expiration:', expiresAt);
@@ -229,58 +287,16 @@ class EnedisAPI {
     if (new Date(expiresAt) <= new Date()) {
       console.log('Token expiré, tentative de rafraîchissement');
       // Token expiré, essayer de le rafraîchir
-      const refreshToken = localStorage.getItem('enedis_refresh_token');
-      if (refreshToken) {
-        try {
-          await this.refreshToken(refreshToken);
-          return localStorage.getItem('enedis_access_token');
-        } catch (error) {
-          console.error('Erreur refresh token:', error);
-          return null;
-        }
+      try {
+        return await this.getApiToken();
+      } catch (error) {
+        console.error('Erreur lors de l\'obtention d\'un nouveau token:', error);
+        return null;
       }
-      return null;
     }
 
     this.accessToken = token;
     return token;
-  }
-
-  private async refreshToken(refreshToken: string): Promise<void> {
-    console.log('Rafraîchissement du token...');
-    
-    // Utiliser la fonction Edge Supabase pour le rafraîchissement du token
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const functionUrl = `${supabaseUrl}/functions/v1/enedis-auth`;
-    
-    const response = await fetch(functionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        action: 'refresh_token',
-        refresh_token: refreshToken
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Échec du rafraîchissement du token');
-    }
-
-    const data = await response.json();
-    localStorage.setItem('enedis_access_token', data.access_token);
-    this.accessToken = data.access_token;
-    
-    if (data.refresh_token) {
-      localStorage.setItem('enedis_refresh_token', data.refresh_token);
-    }
-    
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + data.expires_in);
-    localStorage.setItem('enedis_token_expires', expiresAt.toISOString());
-    
-    console.log('Token rafraîchi avec succès');
   }
 
   private formatConsumptionData(data: any, prm: string) {
