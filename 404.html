@@ -1,18 +1,21 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <title>Page Not Found</title>
-    <script>
-      const segments = window.location.pathname.split('/');
-      const repo = segments[1];
-      const path = segments.slice(2).join('/') || '';
-      const redirectUrl = '/' + repo + '/#/' + path;
-      window.location.replace(redirectUrl);
-    </script>
-  </head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulateur Solaire</title>
+    <!-- Base URL pour GitHub Pages -->
+    <base href="./" />
+    <!-- Ajout des types MIME -->
+    <meta http-equiv="Content-Type" content="text/javascript; charset=utf-8" />
+    <script type="module" crossorigin src="./assets/index-p86SabTX.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-DMMN5fcA.js">
+    <link rel="modulepreload" crossorigin href="./assets/pdf-BNFNYkyc.js">
+    <link rel="modulepreload" crossorigin href="./assets/charts-Bj3Wjc6S.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-Df0wFdvw.css">
+  <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
   <body>
-    <h1>Page Not Found</h1>
-    <p>Redirecting to homepage...</p>
+    <div id="root"></div>
   </body>
 </html>
