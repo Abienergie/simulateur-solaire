@@ -24,11 +24,11 @@ const loadGoogleMapsScript = (): Promise<void> => {
     
     isScriptLoading = true;
     
-    // Get API key from environment variables
+    // Hardcoded API key for simplicity
     const apiKey = 'AIzaSyASRVXnrCTIr-5qmuNljc_LMnSeHOUAVXc';
     
     if (!apiKey) {
-      console.error('Google Maps API key is not defined in environment variables');
+      console.error('Google Maps API key is missing');
       reject(new Error('Google Maps API key is missing'));
       isScriptLoading = false;
       scriptLoadPromise = null;
@@ -259,6 +259,7 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
   
   const generateStaticMapImage = (lat: number, lng: number) => {
     try {
+      // Hardcoded API key for simplicity
       const apiKey = 'AIzaSyASRVXnrCTIr-5qmuNljc_LMnSeHOUAVXc';
       
       if (!apiKey) {
@@ -304,6 +305,7 @@ export default function GoogleMapsView({ coordinates, onCoordinatesChange }: Goo
       setIsCaptureInProgress(true);
       setCaptureSuccess(false);
       
+      // Hardcoded API key for simplicity
       const apiKey = 'AIzaSyASRVXnrCTIr-5qmuNljc_LMnSeHOUAVXc';
       
       if (!apiKey) {
