@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt', // Changé de 'autoUpdate' à 'prompt' pour éviter l'enregistrement automatique
+      registerType: 'autoUpdate',
       manifest: {
         name: 'Simulateur Solaire',
         short_name: 'Simulateur',
@@ -31,9 +31,8 @@ export default defineConfig({
           }
         ]
       },
-      // Désactiver complètement l'enregistrement automatique du service worker
-      injectRegister: false,
-      // Désactiver le service worker en développement
+      // Désactiver complètement le service worker
+      disable: true,
       devOptions: {
         enabled: false
       }
@@ -57,8 +56,7 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     host: true,
-    // Désactiver complètement le HMR pour éviter les rechargements en boucle
-    hmr: false
+    hmr: true
   },
   envPrefix: 'VITE_'
 });
