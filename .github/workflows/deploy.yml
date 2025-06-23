@@ -39,6 +39,12 @@ jobs:
       - name: Copy manifest.webmanifest
         run: cp public/manifest.webmanifest dist/manifest.webmanifest
 
+      - name: Copy static assets
+        run: |
+          mkdir -p dist/docs
+          cp -r public/docs/* dist/docs/ || true
+          cp -r public/templates/* dist/templates/ || true
+
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
