@@ -11,7 +11,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL |
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_ANON_KEY) {
-  console.error('SUPABASE_ANON_KEY environment variable is required');
+  console.error('SUPABASE_ANON_KEY ou VITE_SUPABASE_ANON_KEY environment variable is required');
   process.exit(1);
 }
 
