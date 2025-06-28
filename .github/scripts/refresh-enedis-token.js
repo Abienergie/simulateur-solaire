@@ -1,3 +1,4 @@
+// .github/scripts/refresh-enedis-token.js
 /**
  * Script pour rafraîchir automatiquement le token API Enedis
  * Ce script est exécuté par GitHub Actions toutes les 3 heures
