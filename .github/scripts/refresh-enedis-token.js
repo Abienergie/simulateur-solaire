@@ -22,10 +22,9 @@ console.log(`Using Supabase URL: ${SUPABASE_URL}`);
 async function refreshEnedisToken() {
   return new Promise((resolve, reject) => {
     const url = new URL(`${SUPABASE_URL}/functions/v1/enedis-token-refresh`);
-    url.searchParams.append('scheduled', 'true');
     
     const options = {
-      method: 'GET',
+      method: 'POST', // Changé de GET à POST
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json'
@@ -62,11 +61,18 @@ async function refreshEnedisToken() {
       });
     });
     
+    // Ajouter un corps à la requête POST
+    const postData = JSON.stringify({
+      scheduled: true
+    });
+    
     req.on('error', (error) => {
       console.error('Request error:', error);
       reject(error);
     });
     
+    // Écrire les données dans le corps de la requête
+    req.write(postData);
     req.end();
   });
 }
