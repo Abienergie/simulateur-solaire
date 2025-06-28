@@ -27,7 +27,8 @@ async function refreshEnedisToken() {
       method: 'POST', // Changé de GET à POST
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       }
     };
     
@@ -61,14 +62,14 @@ async function refreshEnedisToken() {
       });
     });
     
-    // Ajouter un corps à la requête POST
-    const postData = JSON.stringify({
-      scheduled: true
-    });
-    
     req.on('error', (error) => {
       console.error('Request error:', error);
       reject(error);
+    });
+    
+    // Ajouter un corps à la requête POST
+    const postData = JSON.stringify({
+      scheduled: true
     });
     
     // Écrire les données dans le corps de la requête
