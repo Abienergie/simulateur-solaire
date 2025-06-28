@@ -3,6 +3,7 @@
  * Ce script est exécuté par GitHub Actions toutes les 3 heures
  */
 
+// Utiliser import au lieu de require pour la compatibilité ES modules
 import 'dotenv/config';
 import https from 'https';
 
@@ -25,7 +26,7 @@ async function refreshEnedisToken() {
     url.searchParams.append('scheduled', 'true');
     
     const options = {
-      method: 'POST', // Changé de GET à POST
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json'
