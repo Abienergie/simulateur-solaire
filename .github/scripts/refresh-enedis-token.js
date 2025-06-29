@@ -25,7 +25,7 @@ async function refreshEnedisToken() {
     url.searchParams.append('scheduled', 'true');
     
     const options = {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json'
@@ -67,8 +67,6 @@ async function refreshEnedisToken() {
       reject(error);
     });
     
-    // Ajouter un corps vide à la requête POST
-    req.write(JSON.stringify({}));
     req.end();
   });
 }
