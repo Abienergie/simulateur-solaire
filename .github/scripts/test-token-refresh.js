@@ -1,10 +1,8 @@
-// .github/scripts/test-token-refresh.js
 /**
  * Script pour tester le rafraîchissement du token Enedis
  * Ce script appelle la fonction Edge Supabase pour obtenir un nouveau token
  */
 
-import 'dotenv/config';
 import https from 'https';
 
 // Configuration
