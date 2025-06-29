@@ -71,8 +71,31 @@ async function getEnedisToken() {
   });
 }
 
+// Exécuter la fonction avec gestion des erreurs et retries
+async function executeWithRetry(fn, maxRetries = 3) {
+  let retries = 0;
+  
+  while (retries < maxRetries) {
+    try {
+      return await fn();
+    } catch (error) {
+      retries++;
+      console.error(`Attempt ${retries}/${maxRetries} failed:`, error.message);
+      
+      if (retries >= maxRetries) {
+        throw error;
+      }
+      
+      // Exponential backoff
+      const delay = Math.pow(2, retries) * 1000;
+      console.log(`Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 // Exécuter la fonction
-getEnedisToken()
+executeWithRetry(getEnedisToken)
   .then((result) => {
     console.log('Test completed successfully');
     console.log('Result:', result);
