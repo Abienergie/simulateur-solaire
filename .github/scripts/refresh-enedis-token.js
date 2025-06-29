@@ -1,11 +1,9 @@
-// .github/scripts/refresh-enedis-token.js
 /**
  * Script pour rafraîchir automatiquement le token API Enedis
  * Ce script est exécuté par GitHub Actions toutes les 3 heures
  */
 
 // Utiliser import au lieu de require pour la compatibilité ES modules
-import 'dotenv/config';
 import https from 'https';
 
 // Configuration
