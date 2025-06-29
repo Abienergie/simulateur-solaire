@@ -23,7 +23,7 @@ async function getEnedisToken() {
     const url = new URL(`${SUPABASE_URL}/functions/v1/enedis-token-refresh`);
     
     const options = {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json'
@@ -67,8 +67,6 @@ async function getEnedisToken() {
       reject(error);
     });
     
-    // Ajouter un corps vide à la requête POST
-    req.write(JSON.stringify({}));
     req.end();
   });
 }
