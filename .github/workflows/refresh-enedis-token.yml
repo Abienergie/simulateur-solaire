@@ -1,10 +1,10 @@
 name: Refresh Enedis API Token
 
 on:
+  # Run every 3 hours
   schedule:
-    # Exécution toutes les 3 heures
     - cron: '0 */3 * * *'
-  # Permet également l'exécution manuelle depuis l'interface GitHub
+  # Allow manual execution from GitHub interface
   workflow_dispatch:
 
 jobs:
@@ -17,7 +17,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Create package.json for ESM
         run: |
@@ -26,11 +27,18 @@ jobs:
       - name: Request new Enedis API token
         run: node .github/scripts/refresh-enedis-token.js
         timeout-minutes: 5
+        timeout-minutes: 5
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Sleep if failed
+        if: ${{ failure() }}
+        run: |
+          echo "Previous step failed, waiting 30 seconds before exiting to avoid rate limiting on next run"
+          sleep 30
 
       - name: Sleep if failed
         if: ${{ failure() }}
