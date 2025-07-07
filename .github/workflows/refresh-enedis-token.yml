@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: '18'
           cache: 'npm'
 
       - name: Create package.json for ESM
@@ -27,6 +27,7 @@ jobs:
       - name: Request new Enedis API token
         run: node .github/scripts/refresh-enedis-token.js
         timeout-minutes: 5
+        continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -36,5 +37,5 @@ jobs:
       - name: Sleep if failed
         if: ${{ failure() }}
         run: |
-          echo "Previous step failed, waiting 30 seconds before exiting to avoid rate limiting on next run"
-          sleep 30
+          echo "Previous step failed, waiting 60 seconds before exiting to avoid rate limiting on next run"
+          sleep 60
