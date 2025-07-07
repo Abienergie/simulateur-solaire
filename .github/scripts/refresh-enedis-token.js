@@ -20,6 +20,10 @@ console.log(`Using Supabase URL: ${SUPABASE_URL}`);
 
 // Exécuter la fonction avec gestion des erreurs et retries
 async function executeWithRetry(fn, maxRetries = 3) {
+  // Add a delay before starting to avoid rate limiting
+  console.log('Waiting 2 seconds before starting...');
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
   let retries = 0;
   
   while (retries < maxRetries) {
@@ -35,7 +39,12 @@ async function executeWithRetry(fn, maxRetries = 3) {
       
       // Exponential backoff
       const delay = Math.pow(2, retries) * 1000;
-      console.log(`Retrying in ${delay}ms...`);
+      console.log(`Retrying in ${delay / 1000} seconds... (Attempt ${retries})`);
+      
+      // Add extra delay for better reliability
+      const actualDelay = delay + 2000;
+      console.log(`Adding extra delay buffer, actual wait: ${actualDelay / 1000} seconds`);
+      
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -60,6 +69,9 @@ async function refreshEnedisToken() {
     const req = https.request(url, options, (res) => {
       let data = '';
       
+      console.log(`Response status code: ${res.statusCode}`);
+      console.log(`Response headers: ${JSON.stringify(res.headers)}`);
+      
       res.on('data', (chunk) => {
         data += chunk;
       });
@@ -69,6 +81,7 @@ async function refreshEnedisToken() {
           try {
             const jsonData = JSON.parse(data);
             console.log('Token refresh successful:', {
+              access_token: jsonData.access_token ? 'Present' : 'Missing',
               success: jsonData.success,
               expires_at: jsonData.expires_at
             });
