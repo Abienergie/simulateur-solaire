@@ -7,7 +7,7 @@
 import https from 'https';
 
 // Configuration
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://xpxbxfuckljqdvkajlmx.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_ANON_KEY) {
@@ -17,6 +17,10 @@ if (!SUPABASE_ANON_KEY) {
 
 console.log('Starting Enedis token refresh process...');
 console.log(`Using Supabase URL: ${SUPABASE_URL}`);
+console.log('Waiting 2 seconds before starting...');
+
+// Attendre 2 secondes avant de démarrer pour éviter les problèmes de rate limiting
+await new Promise(resolve => setTimeout(resolve, 2000));
 
 // Exécuter la fonction avec gestion des erreurs et retries
 async function executeWithRetry(fn, maxRetries = 3) {
@@ -29,13 +33,25 @@ async function executeWithRetry(fn, maxRetries = 3) {
       retries++;
       console.error(`Attempt ${retries}/${maxRetries} failed:`, error.message);
       
+      // Afficher les informations de réponse si disponibles
+      if (error.response) {
+        console.log('Response status code:', error.response.statusCode);
+        console.log('Response headers:', error.response.headers);
+      }
+      
       if (retries >= maxRetries) {
         throw error;
       }
       
       // Exponential backoff
-      const delay = Math.pow(2, retries) * 1000;
+      const delay = Math.pow(2, retries) * 2000; // Augmenter le délai initial à 2 secondes
       console.log(`Retrying in ${delay / 1000} seconds...`);
+      
+      // Ajouter un délai supplémentaire pour éviter les problèmes de rate limiting
+      const bufferDelay = 2000; // 2 secondes supplémentaires
+      const actualDelay = delay + bufferDelay;
+      console.log(`Adding extra delay buffer, actual wait: ${actualDelay / 1000} seconds`);
+      
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -45,7 +61,9 @@ async function executeWithRetry(fn, maxRetries = 3) {
 async function refreshEnedisToken() {
   return new Promise((resolve, reject) => {
     const url = new URL(`${SUPABASE_URL}/functions/v1/enedis-token-refresh`);
-    url.searchParams.append('scheduled', 'true');
+    url.searchParams.append('scheduled', 'true'); 
+    url.searchParams.append('debug', 'true');
+    url.searchParams.append('timestamp', Date.now().toString());
     
     const options = {
       method: 'GET',
@@ -58,6 +76,9 @@ async function refreshEnedisToken() {
     console.log(`Calling Edge Function: ${url.toString().replace(/Bearer [^&]+/, 'Bearer ***')}`);
     
     const req = https.request(url, options, (res) => {
+      console.log('Response status code:', res.statusCode);
+      console.log('Response headers:', res.headers);
+      
       let data = '';
       
       res.on('data', (chunk) => {
@@ -65,6 +86,8 @@ async function refreshEnedisToken() {
       });
       
       res.on('end', () => {
+        console.log('Response received, length:', data.length);
+        
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try {
             const jsonData = JSON.parse(data);
@@ -79,6 +102,7 @@ async function refreshEnedisToken() {
           }
         } else {
           console.error(`HTTP Error: ${res.statusCode}`);
+          console.error('Response headers:', res.headers);
           console.error('Response:', data);
           reject(new Error(`HTTP Error: ${res.statusCode} - ${data}`));
         }
