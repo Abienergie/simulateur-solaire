@@ -10,7 +10,6 @@ import https from 'https';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://xpxbxfuckljqdvkajlmx.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY; 
 const REQUEST_TIMEOUT = 60000; // 60 seconds timeout
-const REQUEST_TIMEOUT = 60000; // 60 seconds timeout
 
 if (!SUPABASE_ANON_KEY) {
   console.error('SUPABASE_ANON_KEY ou VITE_SUPABASE_ANON_KEY environment variable is required');
@@ -25,14 +24,6 @@ async function executeWithRetry(fn, maxRetries = 3) {
   // Add a delay before starting to avoid rate limiting
   console.log('Waiting 5 seconds before starting...');
   await new Promise(resolve => setTimeout(resolve, 5000));
-  
-  // Add a delay before starting to avoid rate limiting
-  console.log('Waiting 2 seconds before starting...');
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  // Add a delay before starting to avoid rate limiting
-  console.log('Waiting 2 seconds before starting...');
-  await new Promise(resolve => setTimeout(resolve, 2000));
   
   let retries = 0;
   
@@ -55,15 +46,6 @@ async function executeWithRetry(fn, maxRetries = 3) {
       const actualDelay = delay + 2000;
       console.log(`Adding extra delay buffer, actual wait: ${actualDelay / 1000} seconds`);
       
-      // Add extra delay for better reliability
-      const actualDelay = delay + 2000;
-      console.log(`Adding extra delay buffer, actual wait: ${actualDelay / 1000} seconds`);
-      
-      
-      // Add extra delay for better reliability
-      const actualDelay = delay + 2000;
-      console.log(`Adding extra delay buffer, actual wait: ${actualDelay / 1000} seconds`);
-      
       await new Promise(resolve => setTimeout(resolve, actualDelay));
     }
   }
@@ -73,12 +55,9 @@ async function executeWithRetry(fn, maxRetries = 3) {
 async function refreshEnedisToken() {
   const requestId = Math.random().toString(36).substring(2, 15);
   
-  const requestId = Math.random().toString(36).substring(2, 15);
-  
   return new Promise((resolve, reject) => {
     const url = new URL(`${SUPABASE_URL}/functions/v1/enedis-token-refresh`);
     url.searchParams.append('scheduled', 'true');
-    url.searchParams.append('request_id', requestId);
     url.searchParams.append('request_id', requestId);
     
     const options = {
@@ -90,11 +69,6 @@ async function refreshEnedisToken() {
         'Cache-Control': 'no-cache, no-store',
         'Pragma': 'no-cache',
         'X-Request-ID': requestId
-        'User-Agent': 'AbieSolarSimulator/1.0 (GitHub-Action)',
-        'Cache-Control': 'no-cache, no-store',
-        'Pragma': 'no-cache',
-        'X-Request-ID': requestId
-      },
       },
       timeout: REQUEST_TIMEOUT
     };
@@ -103,12 +77,6 @@ async function refreshEnedisToken() {
     
     const req = https.request(url, options, (res) => {
       let data = '';
-      
-      console.log(`Response status code: ${res.statusCode}`);
-      console.log(`Response headers: ${JSON.stringify(res.headers)}`);
-      
-      console.log(`Response status code: ${res.statusCode}`);
-      console.log(`Response headers: ${JSON.stringify(res.headers)}`);
       
       console.log(`Response status code: ${res.statusCode}`);
       console.log(`Response headers: ${JSON.stringify(res.headers)}`);
@@ -122,9 +90,6 @@ async function refreshEnedisToken() {
           try {
             const jsonData = JSON.parse(data);
             console.log('Token refresh successful:', {
-              access_token: jsonData.access_token ? 'Present' : 'Missing',
-              access_token_length: jsonData.access_token ? jsonData.access_token.length : 0,
-              access_token: jsonData.access_token ? 'Present' : 'Missing',
               access_token: jsonData.access_token ? 'Present' : 'Missing',
               access_token_length: jsonData.access_token ? jsonData.access_token.length : 0,
               success: jsonData.success,
